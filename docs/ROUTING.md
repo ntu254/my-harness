@@ -16,9 +16,12 @@ The route decision returns:
 - `workflow`: the operating workflow for the task
 - `skills`: selected skill ids from `harness/skills.json`
 - `required_capabilities`: capabilities required by those skills
+- `optional_capabilities`: capabilities that strengthen proof but should not always block
 - `available_tools`: matching tool or adapter records
 - `candidate_tools`: matching records that are still unknown or missing
 - `missing_capabilities`: proof gaps to handle before trusting execution
+- `missing_required_capabilities`: gaps that block completion
+- `missing_optional_capabilities`: gaps that make proof weak
 - `proof_policy`: pass, warn, or block
 - `human_gate_required`: whether explicit approval is required
 

@@ -1,5 +1,5 @@
 {
-  "suite": "v0.8-route-alignment",
+  "suite": "v0.9-core-gate-routing",
   "description": "Fixture cases for validating lane, workflow, skill, and gate decisions.",
   "cases": [
     {
@@ -11,6 +11,7 @@
       "uncertainty": "low",
       "reversibility": "easy",
       "risk": "low",
+      "process_budget": 3,
       "expected_lane": "tiny",
       "expected_skills": ["tiny-change", "code-quality-review"]
     },
@@ -23,6 +24,7 @@
       "uncertainty": "medium",
       "reversibility": "easy",
       "risk": "medium",
+      "process_budget": 5,
       "expected_lane": "normal",
       "expected_skills": ["systematic-debugging", "regression-proof", "code-quality-review"]
     },
@@ -35,6 +37,7 @@
       "uncertainty": "high",
       "reversibility": "costly",
       "risk": "high",
+      "process_budget": 5,
       "expected_lane": "high_risk",
       "expected_skills": ["spec-clarification", "high-risk-plan"]
     },
@@ -48,6 +51,7 @@
       "reversibility": "easy",
       "risk": "medium",
       "tags": ["ui", "frontend"],
+      "process_budget": 6,
       "expected_lane": "normal",
       "expected_skills": ["normal-feature", "spec-clarification", "code-quality-review", "design-quality-review"]
     },
@@ -60,6 +64,7 @@
       "uncertainty": "medium",
       "reversibility": "irreversible",
       "risk": "critical",
+      "process_budget": 7,
       "expected_lane": "approval_required",
       "expected_skills": ["high-risk-plan", "human-gate"]
     }

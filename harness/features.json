@@ -265,6 +265,41 @@
         "2026-07-19: .\\harness\\harness.ps1 check --include-active passed with 0 active stories"
       ],
       "notes": "v0.8 is an alignment release that fills missing plan pieces from skill/capability routing through human gates and benchmark evidence. Real provider smoke remains deferred."
+    },
+    {
+      "id": "MH-012",
+      "priority": 12,
+      "area": "v0.9",
+      "title": "Harden completion gates, evidence freshness, scoped approvals, and benchmark scores",
+      "user_visible_behavior": "The harness can produce final reports, block completion on stale evidence or missing required proof, distinguish weak optional proof, enforce approval scope and expiry, and score route benchmarks.",
+      "status": "passing",
+      "verification": [
+        "Run harness init and confirm schema version 7 applies",
+        "Seed standard tool capabilities including a present test-runner",
+        "Route bugfix, UI, and approval-required tasks and inspect proof policy",
+        "Create final report for a fresh evidenced story",
+        "Complete a story through gates",
+        "Check matching, mismatched, and expired approvals",
+        "Run a high-risk task through a valid scoped approval",
+        "Confirm stale evidence blocks final report",
+        "Run benchmark fixtures and confirm scores are reported",
+        "Run harness check --include-active"
+      ],
+      "evidence": [
+        "2026-07-19: python -m py_compile cli\\harness.py passed",
+        "2026-07-19: .\\harness\\harness.ps1 init applied schema version 7",
+        "2026-07-19: .\\harness\\harness.ps1 tool seed registered harness-pycompile as present test-runner",
+        "2026-07-19: bugfix route returned proof_policy pass with no missing required capabilities",
+        "2026-07-19: UI route returned proof_policy block for missing browser/a11y/visual proof",
+        "2026-07-19: report final returned pass for a fresh evidenced story",
+        "2026-07-19: complete persisted report and completed a story",
+        "2026-07-19: approval check returned valid for matching scope and scope_mismatch for wrong scope",
+        "2026-07-19: approved high-risk run completed only with valid scoped approval",
+        "2026-07-19: expired approval returned approval_expired",
+        "2026-07-19: stale evidence final report returned blocked with stale_evidence",
+        "2026-07-19: bench run passed 5/5 and reported quality/cost/adaptiveness/durability scores"
+      ],
+      "notes": "v0.9 prepares v1.0 by hardening completion semantics. Provider transforms and multi-agent orchestration remain deferred."
     }
   ]
 }

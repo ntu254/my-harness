@@ -9,6 +9,9 @@ recorded but not executed without explicit approval.
 v0.8 also adds the planned controller surface: route decisions, skill/capability
 resolution, human approval records, and deterministic route benchmarks.
 
+v0.9 adds final reports, completion gates, scoped approval expiry, and benchmark
+scores.
+
 ## Start
 
 Windows:
@@ -45,7 +48,10 @@ harness tool register
 harness tool seed
 harness approval request
 harness approval resolve
+harness approval check
 harness bench run
+harness report final
+harness complete
 harness adapter register
 harness adapter list
 harness adapter preset
@@ -63,6 +69,7 @@ harness query adapters
 harness query routes
 harness query approvals
 harness query benchmarks
+harness query reports
 ```
 
 Every command accepts `--json` at the top level:
@@ -191,6 +198,21 @@ Benchmark example:
 
 ```powershell
 .\harness\harness.ps1 bench run --json --fail-on-regression
+```
+
+Completion gate example:
+
+```powershell
+.\harness\harness.ps1 report final --json `
+  --story MH-011 `
+  --route-id 5 `
+  --persist
+
+.\harness\harness.ps1 complete --json `
+  --story MH-011 `
+  --route-id 5 `
+  --residual-risk "none beyond local smoke" `
+  --rollback "revert the change if checks regress"
 ```
 
 ## State Transition Safety

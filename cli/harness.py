@@ -11,6 +11,7 @@ import shlex
 import sqlite3
 import subprocess
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -55,6 +56,7 @@ ADAPTER_TRUST = {"project_declared", "user_declared", "verified_local"}
 COMMAND_MODES = {"shell", "argv"}
 VERIFICATION_MODES = {"shell", "argv", "native"}
 HUMAN_GATE_STATUSES = {"pending", "approved", "rejected", "cancelled"}
+COMPLETION_STATUSES = {"pass", "blocked", "weak"}
 
 SKILL_REGISTRY = ROOT / "harness" / "skills.json"
 BENCHMARK_REGISTRY = ROOT / "harness" / "benchmarks.json"
@@ -225,6 +227,14 @@ def git_dirty_files() -> str:
         return "[]"
 
 
+def utc_now_text() -> str:
+    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def utc_after_minutes(minutes: int) -> str:
+    return (datetime.utcnow() + timedelta(minutes=minutes)).strftime("%Y-%m-%d %H:%M:%S")
+
+
 def validate_choice(value: str, allowed: set[str], label: str) -> str:
     if value not in allowed:
         raise SystemExit(f"invalid {label}: {value}. Use one of: {', '.join(sorted(allowed))}")
@@ -379,16 +389,31 @@ def choose_skill_ids(lane: str, intent: str, work_type: str, scope: str, tags: l
     return selected
 
 
-def required_capabilities_for(skill_ids: list[str], extra: list[str] | None = None) -> list[str]:
+def capability_plan_for(
+    skill_ids: list[str],
+    extra_required: list[str] | None = None,
+) -> tuple[list[str], list[str]]:
     registry = skills_by_id()
     required: list[str] = []
+    optional: list[str] = []
     for skill_id in skill_ids:
         for capability in registry.get(skill_id, {}).get("required_capabilities", []):
             if capability not in required:
                 required.append(capability)
-    for capability in extra or []:
+        for capability in registry.get(skill_id, {}).get("optional_capabilities", []):
+            if capability not in required and capability not in optional:
+                optional.append(capability)
+    for capability in extra_required or []:
         if capability not in required:
             required.append(capability)
+        if capability in optional:
+            optional.remove(capability)
+    optional = [capability for capability in optional if capability not in required]
+    return required, optional
+
+
+def required_capabilities_for(skill_ids: list[str], extra: list[str] | None = None) -> list[str]:
+    required, _ = capability_plan_for(skill_ids, extra)
     return required
 
 
@@ -440,7 +465,8 @@ def build_route_decision(args: argparse.Namespace, persist: bool = False) -> dic
     tags = normalize_csv(getattr(args, "tag", None))
     explicit_capabilities = normalize_csv(getattr(args, "requires", None))
     skill_ids = choose_skill_ids(lane, intent, work_type, scope, tags)
-    required = required_capabilities_for(skill_ids, explicit_capabilities)
+    required, optional = capability_plan_for(skill_ids, explicit_capabilities)
+    all_capabilities = required + [capability for capability in optional if capability not in required]
     with connect() as conn:
         tools = available_tools(conn)
         present_capabilities = {
@@ -448,25 +474,36 @@ def build_route_decision(args: argparse.Namespace, persist: bool = False) -> dic
             for tool in tools
             if tool.get("availability") == "present"
         }
-        missing = [capability for capability in required if capability not in present_capabilities]
+        missing_required = [capability for capability in required if capability not in present_capabilities]
+        missing_optional = [capability for capability in optional if capability not in present_capabilities]
+        missing = missing_required + [capability for capability in missing_optional if capability not in missing_required]
         available = [
-            tool for tool in tools if tool.get("capability") in required and tool.get("availability") == "present"
+            tool for tool in tools if tool.get("capability") in all_capabilities and tool.get("availability") == "present"
         ]
         candidates = [
             tool
             for tool in tools
-            if tool.get("capability") in required and tool.get("availability") in {"unknown", "missing"}
+            if tool.get("capability") in all_capabilities and tool.get("availability") in {"unknown", "missing"}
         ]
+        proof_policy = "pass"
+        if lane == "approval_required" or missing_required:
+            proof_policy = "block"
+        elif missing_optional:
+            proof_policy = "warn"
         decision = {
             "summary": args.summary,
             "lane": lane,
             "workflow": choose_workflow(lane, intent, work_type, tags),
             "skills": skill_ids,
             "required_capabilities": required,
+            "optional_capabilities": optional,
             "available_tools": available,
             "candidate_tools": candidates,
             "missing_capabilities": missing,
-            "proof_policy": "block" if lane == "approval_required" else ("warn" if missing else "pass"),
+            "missing_required_capabilities": missing_required,
+            "missing_optional_capabilities": missing_optional,
+            "proof_policy": proof_policy,
+            "weak_proof": bool(missing_optional),
             "human_gate_required": lane == "approval_required",
             "rationale": {
                 "intent": intent,
@@ -484,9 +521,11 @@ def build_route_decision(args: argparse.Namespace, persist: bool = False) -> dic
                 INSERT INTO route_decision
                   (summary, intent, work_type, scope, uncertainty, reversibility, risk, lane,
                    workflow, skills_json, required_capabilities_json, available_tools_json,
-                   missing_capabilities_json, proof_policy, human_gate_required, rationale_json)
+                   missing_capabilities_json, proof_policy, human_gate_required, rationale_json,
+                   optional_capabilities_json, missing_required_capabilities_json,
+                   missing_optional_capabilities_json, candidate_tools_json)
                 VALUES
-                  (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     args.summary,
@@ -502,9 +541,13 @@ def build_route_decision(args: argparse.Namespace, persist: bool = False) -> dic
                     json.dumps(required, ensure_ascii=False),
                     json.dumps(available, ensure_ascii=False),
                     json.dumps(missing, ensure_ascii=False),
-                    decision["proof_policy"],
+                    proof_policy,
                     int(decision["human_gate_required"]),
                     json.dumps(decision["rationale"], ensure_ascii=False),
+                    json.dumps(optional, ensure_ascii=False),
+                    json.dumps(missing_required, ensure_ascii=False),
+                    json.dumps(missing_optional, ensure_ascii=False),
+                    json.dumps(candidates, ensure_ascii=False),
                 ),
             )
             decision["route_id"] = cur.lastrowid
@@ -627,6 +670,212 @@ def insert_evidence(conn: sqlite3.Connection, values: dict[str, Any]) -> int:
     return int(cur.lastrowid)
 
 
+def parse_json_list(value: str | None) -> list[Any]:
+    if not value:
+        return []
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def story_evidence_rows(conn: sqlite3.Connection, story: sqlite3.Row) -> list[sqlite3.Row]:
+    evidence_ids: list[int] = []
+    for item in (story["evidence"] or "").split(","):
+        item = item.strip()
+        if item.isdigit():
+            evidence_ids.append(int(item))
+    rows_by_id: dict[int, sqlite3.Row] = {}
+    if evidence_ids:
+        placeholders = ",".join("?" for _ in evidence_ids)
+        for row in conn.execute(f"SELECT * FROM evidence WHERE id IN ({placeholders})", tuple(evidence_ids)).fetchall():
+            rows_by_id[int(row["id"])] = row
+    for row in conn.execute("SELECT * FROM evidence WHERE story_id = ?", (story["id"],)).fetchall():
+        rows_by_id[int(row["id"])] = row
+    return [rows_by_id[key] for key in sorted(rows_by_id)]
+
+
+def stale_evidence(rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
+    current_head = git_head()
+    current_dirty = git_dirty_files()
+    stale: list[dict[str, Any]] = []
+    for row in rows:
+        reasons: list[str] = []
+        if row["git_head"] and current_head and row["git_head"] != current_head:
+            reasons.append("git_head_changed")
+        if row["dirty_files"] != current_dirty:
+            reasons.append("dirty_state_changed")
+        if reasons:
+            stale.append(
+                {
+                    "id": row["id"],
+                    "kind": row["kind"],
+                    "target": row["target"],
+                    "reasons": reasons,
+                    "evidence_git_head": row["git_head"],
+                    "current_git_head": current_head,
+                }
+            )
+    return stale
+
+
+def approval_validity(
+    conn: sqlite3.Connection,
+    approval_id: int | None,
+    scope_ref: str | None,
+    require_approval: bool = False,
+) -> dict[str, Any]:
+    if approval_id is None:
+        return {
+            "valid": not require_approval,
+            "status": "not_required" if not require_approval else "missing",
+            "reason": None if not require_approval else "approval_required",
+        }
+    row = conn.execute("SELECT * FROM human_gate WHERE id = ?", (approval_id,)).fetchone()
+    if row is None:
+        return {"valid": False, "status": "missing", "reason": "approval_not_found"}
+    if row["status"] != "approved":
+        return {"valid": False, "status": row["status"], "reason": "approval_not_approved"}
+    if row["expires_at"] and row["expires_at"] <= utc_now_text():
+        return {"valid": False, "status": "expired", "reason": "approval_expired"}
+    if row["scope_ref"] and scope_ref and row["scope_ref"] != scope_ref:
+        return {
+            "valid": False,
+            "status": "scope_mismatch",
+            "reason": f"expected {row['scope_ref']} got {scope_ref}",
+        }
+    if row["scope_ref"] and not scope_ref:
+        return {"valid": False, "status": "scope_missing", "reason": "approval_scope_required"}
+    return {
+        "valid": True,
+        "status": "approved",
+        "reason": None,
+        "scope_ref": row["scope_ref"],
+        "expires_at": row["expires_at"],
+    }
+
+
+def route_gate_payload(conn: sqlite3.Connection, route_id: int | None) -> dict[str, Any]:
+    if route_id is None:
+        return {
+            "route_id": None,
+            "missing_required_capabilities": [],
+            "missing_optional_capabilities": [],
+            "proof_policy": "unknown",
+        }
+    row = conn.execute("SELECT * FROM route_decision WHERE id = ?", (route_id,)).fetchone()
+    if row is None:
+        raise SystemExit(f"route decision not found: {route_id}")
+    keys = set(row.keys())
+    missing_required = (
+        parse_json_list(row["missing_required_capabilities_json"])
+        if "missing_required_capabilities_json" in keys
+        else parse_json_list(row["missing_capabilities_json"])
+    )
+    missing_optional = (
+        parse_json_list(row["missing_optional_capabilities_json"])
+        if "missing_optional_capabilities_json" in keys
+        else []
+    )
+    return {
+        "route_id": route_id,
+        "lane": row["lane"],
+        "workflow": row["workflow"],
+        "proof_policy": row["proof_policy"],
+        "missing_required_capabilities": missing_required,
+        "missing_optional_capabilities": missing_optional,
+        "skills": parse_json_list(row["skills_json"]),
+    }
+
+
+def build_final_report(args: argparse.Namespace, persist: bool = False) -> dict[str, Any]:
+    ensure_db()
+    with connect() as conn:
+        story = conn.execute("SELECT * FROM story WHERE id = ?", (args.story,)).fetchone()
+        if story is None:
+            raise SystemExit(f"story not found: {args.story}")
+        evidence_rows = story_evidence_rows(conn, story)
+        evidence = [row_dict(row) for row in evidence_rows]
+        stale = stale_evidence(evidence_rows)
+        route_payload = route_gate_payload(conn, getattr(args, "route_id", None))
+        approval_required = story["lane"] == "approval_required" or route_payload.get("lane") == "approval_required"
+        approval = approval_validity(
+            conn,
+            getattr(args, "approval_id", None),
+            getattr(args, "scope", None) or story["id"],
+            require_approval=approval_required,
+        )
+        blockers: list[str] = []
+        warnings: list[str] = []
+        if not evidence_rows:
+            blockers.append("missing_evidence")
+        if stale and not getattr(args, "allow_stale_evidence", False):
+            blockers.append("stale_evidence")
+        if route_payload["missing_required_capabilities"]:
+            blockers.append("missing_required_capabilities")
+        if approval_required and not approval["valid"]:
+            blockers.append("approval_not_valid")
+        if route_payload["missing_optional_capabilities"]:
+            warnings.append("missing_optional_capabilities")
+        skipped_checks = normalize_csv(getattr(args, "skipped_check", []) or [])
+        if skipped_checks:
+            warnings.append("skipped_checks")
+        status = "pass"
+        if blockers:
+            status = "blocked"
+        elif warnings:
+            status = "weak"
+        report = {
+            "story": {
+                "id": story["id"],
+                "title": story["title"],
+                "lane": story["lane"],
+                "status": story["status"],
+                "revision": story["revision"],
+            },
+            "status": status,
+            "blockers": blockers,
+            "warnings": warnings,
+            "route": route_payload,
+            "approval": approval,
+            "evidence_ids": [row["id"] for row in evidence],
+            "stale_evidence": stale,
+            "skipped_checks": skipped_checks,
+            "residual_risk": getattr(args, "residual_risk", None),
+            "rollback_info": getattr(args, "rollback", None),
+            "git_head": git_head(),
+            "dirty_files": parse_json_list(git_dirty_files()),
+        }
+        if persist:
+            cur = conn.execute(
+                """
+                INSERT INTO completion_report
+                  (story_id, route_id, approval_id, status, evidence_ids, stale_evidence_json,
+                   missing_required_capabilities_json, missing_optional_capabilities_json,
+                   approval_status, skipped_checks_json, residual_risk, rollback_info, report_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    story["id"],
+                    route_payload["route_id"],
+                    getattr(args, "approval_id", None),
+                    status,
+                    json.dumps(report["evidence_ids"], ensure_ascii=False),
+                    json.dumps(stale, ensure_ascii=False),
+                    json.dumps(route_payload["missing_required_capabilities"], ensure_ascii=False),
+                    json.dumps(route_payload["missing_optional_capabilities"], ensure_ascii=False),
+                    approval["status"],
+                    json.dumps(skipped_checks, ensure_ascii=False),
+                    getattr(args, "residual_risk", None),
+                    getattr(args, "rollback", None),
+                    json.dumps(report, ensure_ascii=False),
+                ),
+            )
+            report["completion_report_id"] = cur.lastrowid
+    return report
+
+
 def cmd_init(args: argparse.Namespace) -> None:
     applied = ensure_db()
     emit({"database": str(db_path()), "status": "initialized", "applied_schema_versions": applied}, args.json)
@@ -647,8 +896,10 @@ def check_required_files() -> list[dict[str, Any]]:
         "state/schema/004-argv-and-prompt-templates.sql",
         "state/schema/005-adapter-capabilities.sql",
         "state/schema/006-routing-alignment.sql",
+        "state/schema/007-core-gates.sql",
         "harness/skills.json",
         "harness/benchmarks.json",
+        "docs/GATES.md",
         "templates/prompts/adapter-smoke.md",
     ]
     return [
@@ -1124,6 +1375,7 @@ def cmd_tool_seed(args: argparse.Namespace) -> None:
     executable_tools = [
         ("rg", "code-search", "rg", "rg --files", "Fast repository search."),
         ("python", "fast-check", "python", "python -m py_compile cli/harness.py", "Local Python smoke checks."),
+        ("harness-pycompile", "test-runner", "python", "python -m py_compile cli/harness.py", "Built-in harness test runner."),
         ("git", "change-trace", "git", "git status --short", "Local change and history inspection."),
         ("pytest", "test-runner", "pytest", "pytest", "Python test runner when available."),
     ]
@@ -1150,6 +1402,8 @@ def cmd_tool_seed(args: argparse.Namespace) -> None:
         ("harness-bench", "benchmark-runner", "harness bench run", "present", "Local route benchmark harness."),
         ("manual-static-analysis", "static-analysis", "manual:static-analysis", "present", "Maintainability and quality rubric."),
         ("manual-diagnostic-logs", "diagnostic-logs", "manual:diagnostic-logs", "present", "Collect and inspect logs or repro output."),
+        ("manual-log-viewer", "log-viewer", "manual:log-viewer", "present", "Inspect local logs and command output."),
+        ("manual-perf-check", "performance-check", "manual:performance-check", "unknown", "Performance check when relevant."),
         ("manual-browser-check", "browser-check", "manual:browser-check", "unknown", "Browser/UI verification when a UI exists."),
         ("manual-accessibility-check", "accessibility-check", "manual:accessibility-check", "unknown", "Accessibility review when a UI exists."),
         ("manual-visual-review", "visual-review", "manual:visual-review", "unknown", "Visual QA evidence when a UI exists."),
@@ -1175,19 +1429,23 @@ def cmd_route(args: argparse.Namespace) -> None:
 
 def cmd_approval_request(args: argparse.Namespace) -> None:
     ensure_db()
+    if args.ttl_minutes < 0:
+        raise SystemExit("--ttl-minutes must be zero or positive")
     values = {
         "story_id": args.story,
         "summary": args.summary,
         "risk": validate_choice(args.risk, RISKS, "risk"),
         "requested_by": args.requested_by,
         "status": "pending",
+        "scope_ref": args.scope,
+        "expires_at": utc_after_minutes(args.ttl_minutes),
         "notes": args.notes,
     }
     with connect() as conn:
         cur = conn.execute(
             """
-            INSERT INTO human_gate (story_id, summary, risk, requested_by, status, notes)
-            VALUES (:story_id, :summary, :risk, :requested_by, :status, :notes)
+            INSERT INTO human_gate (story_id, summary, risk, requested_by, status, scope_ref, expires_at, notes)
+            VALUES (:story_id, :summary, :risk, :requested_by, :status, :scope_ref, :expires_at, :notes)
             """,
             values,
         )
@@ -1220,6 +1478,17 @@ def cmd_approval_resolve(args: argparse.Namespace) -> None:
             raise SystemExit("approval resolve failed: pending gate not found")
         row = conn.execute("SELECT * FROM human_gate WHERE id = ?", (args.id,)).fetchone()
     emit(row_dict(row), args.json)
+
+
+def cmd_approval_check(args: argparse.Namespace) -> None:
+    ensure_db()
+    with connect() as conn:
+        result = approval_validity(conn, args.id, args.scope, require_approval=True)
+    result["id"] = args.id
+    result["scope"] = args.scope
+    emit(result, args.json)
+    if not result["valid"] and args.fail_on_invalid:
+        raise SystemExit(1)
 
 
 def cmd_bench_run(args: argparse.Namespace) -> None:
@@ -1263,17 +1532,36 @@ def cmd_bench_run(args: argparse.Namespace) -> None:
         )
     pass_count = sum(1 for item in results if item["passed"])
     fail_count = len(results) - pass_count
+    quality_score = round((pass_count / max(1, len(results))) * 100, 2)
+    total_skill_count = sum(len(item["actual_skills"]) for item in results)
+    process_budget = sum(int(case.get("process_budget", 6)) for case in cases if isinstance(case, dict))
+    cost_score = round(max(0, 100 - max(0, total_skill_count - process_budget) * 10), 2)
+    adaptiveness_failures = sum(
+        1 for item in results if item["expected_lane"] is not None and item["actual_lane"] != item["expected_lane"]
+    )
+    adaptiveness_score = round(max(0, 100 - adaptiveness_failures * 25), 2)
+    required_gap_count = sum(len(item["missing_capabilities"]) for item in results)
+    durability_score = round(max(0, 100 - required_gap_count * 5), 2)
+    scores = {
+        "quality": quality_score,
+        "cost": cost_score,
+        "adaptiveness": adaptiveness_score,
+        "durability": durability_score,
+        "total": round((quality_score + cost_score + adaptiveness_score + durability_score) / 4, 2),
+        "notes": "v0.9 deterministic controller scores; agent-output scoring remains future work.",
+    }
     payload = {
         "suite": data.get("suite", "local-route-benchmark") if isinstance(data, dict) else "local-route-benchmark",
         "pass_count": pass_count,
         "fail_count": fail_count,
+        "scores": scores,
         "results": results,
     }
     with connect() as conn:
         cur = conn.execute(
             """
-            INSERT INTO benchmark_run (suite, case_count, pass_count, fail_count, result_json, notes)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO benchmark_run (suite, case_count, pass_count, fail_count, result_json, notes, score_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 payload["suite"],
@@ -1282,12 +1570,42 @@ def cmd_bench_run(args: argparse.Namespace) -> None:
                 fail_count,
                 json.dumps(results, ensure_ascii=False),
                 args.notes,
+                json.dumps(scores, ensure_ascii=False),
             ),
         )
         payload["benchmark_run_id"] = cur.lastrowid
     emit(payload, args.json)
     if fail_count and args.fail_on_regression:
         raise SystemExit(1)
+
+
+def cmd_report_final(args: argparse.Namespace) -> None:
+    report = build_final_report(args, persist=args.persist)
+    emit(report, args.json)
+    if report["status"] == "blocked" and args.fail_on_blocked:
+        raise SystemExit(1)
+
+
+def cmd_complete(args: argparse.Namespace) -> None:
+    report = build_final_report(args, persist=True)
+    if report["status"] == "blocked":
+        with connect() as conn:
+            conn.execute(
+                "UPDATE story SET status = 'blocked', updated_at = datetime('now'), revision = revision + 1 WHERE id = ?",
+                (args.story,),
+            )
+        emit(report, args.json)
+        raise SystemExit(1)
+    if report["status"] == "weak" and not args.allow_weak:
+        emit(report, args.json)
+        raise SystemExit(1)
+    with connect() as conn:
+        conn.execute(
+            "UPDATE story SET status = 'completed', updated_at = datetime('now'), revision = revision + 1 WHERE id = ?",
+            (args.story,),
+        )
+    report["completed"] = True
+    emit(report, args.json)
 
 
 def cmd_adapter_run(args: argparse.Namespace) -> None:
@@ -1336,6 +1654,8 @@ def cmd_adapter_run(args: argparse.Namespace) -> None:
         notes=args.notes or f"adapter={args.adapter}",
         adapter=args.adapter,
         prompt=prompt,
+        approval_id=args.approval_id,
+        approval_scope=args.approval_scope,
     )
     cmd_run_once(run_args)
 
@@ -1406,41 +1726,55 @@ def cmd_run_once(args: argparse.Namespace) -> None:
             ),
         ).lastrowid
 
+    approval_id = getattr(args, "approval_id", None)
+    approval_scope = getattr(args, "approval_scope", None) or args.id
+    approval_status: dict[str, Any] | None = None
     if lane in {"high_risk", "approval_required"} and not args.allow_high_risk:
-        with connect() as conn:
-            conn.execute(
-                "UPDATE story SET status = 'needs_human', updated_at = datetime('now'), revision = revision + 1 WHERE id = ?",
-                (args.id,),
+        if approval_id is not None:
+            with connect() as conn:
+                approval_status = approval_validity(conn, approval_id, approval_scope, require_approval=True)
+        if approval_status and approval_status["valid"]:
+            pass
+        else:
+            reason = (
+                approval_status["reason"]
+                if approval_status
+                else "high-risk lane requires --allow-high-risk or a valid --approval-id"
             )
-            conn.execute(
-                """
-                UPDATE agent_run
-                SET status = 'needs_human', completed_at = datetime('now'), notes = ?
-                WHERE id = ?
-                """,
-                ("High-risk lane requires --allow-high-risk before command execution.", run_id),
+            with connect() as conn:
+                conn.execute(
+                    "UPDATE story SET status = 'needs_human', updated_at = datetime('now'), revision = revision + 1 WHERE id = ?",
+                    (args.id,),
+                )
+                conn.execute(
+                    """
+                    UPDATE agent_run
+                    SET status = 'needs_human', completed_at = datetime('now'), notes = ?
+                    WHERE id = ?
+                    """,
+                    (reason, run_id),
+                )
+                conn.execute(
+                    """
+                    INSERT INTO trace (summary, outcome, intake_id, story_id, friction, notes)
+                    VALUES (?, 'blocked', ?, ?, 'needs human approval', ?)
+                    """,
+                    (args.summary, intake_id, args.id, f"lane={lane}; command not executed; {reason}"),
+                )
+            emit(
+                {
+                    "run_id": run_id,
+                    "intake_id": intake_id,
+                    "story_id": args.id,
+                    "lane": lane,
+                    "status": "needs_human",
+                    "executed": False,
+                    "reason": reason,
+                    "approval": approval_status,
+                },
+                args.json,
             )
-            conn.execute(
-                """
-                INSERT INTO trace (summary, outcome, intake_id, story_id, friction, notes)
-                VALUES (?, 'blocked', ?, ?, 'needs human approval', ?)
-                """,
-                (args.summary, intake_id, args.id, f"lane={lane}; command not executed"),
-            )
-        emit(
-            {
-                "run_id": run_id,
-                "intake_id": intake_id,
-                "story_id": args.id,
-                "lane": lane,
-                "status": "needs_human",
-                "executed": False,
-                "reason": "high-risk lane requires --allow-high-risk",
-            },
-            args.json,
-        )
-        return
-
+            return
     evidence_ids: list[int] = []
     status = "completed"
     agent_exit: int | None = None
@@ -1647,6 +1981,35 @@ def build_parser() -> argparse.ArgumentParser:
     route.add_argument("--persist", action="store_true")
     route.set_defaults(func=cmd_route)
 
+    report = sub.add_parser("report", help="report commands")
+    report_sub = report.add_subparsers(dest="report_command", required=True)
+    report_final = report_sub.add_parser("final", help="build a final completion report")
+    report_final.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
+    report_final.add_argument("--story", required=True)
+    report_final.add_argument("--route-id", type=int)
+    report_final.add_argument("--approval-id", type=int)
+    report_final.add_argument("--scope")
+    report_final.add_argument("--skipped-check", action="append", default=[])
+    report_final.add_argument("--residual-risk")
+    report_final.add_argument("--rollback")
+    report_final.add_argument("--allow-stale-evidence", action="store_true")
+    report_final.add_argument("--persist", action="store_true")
+    report_final.add_argument("--fail-on-blocked", action="store_true")
+    report_final.set_defaults(func=cmd_report_final)
+
+    complete = sub.add_parser("complete", help="apply completion gates and complete a story")
+    complete.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
+    complete.add_argument("--story", required=True)
+    complete.add_argument("--route-id", type=int)
+    complete.add_argument("--approval-id", type=int)
+    complete.add_argument("--scope")
+    complete.add_argument("--skipped-check", action="append", default=[])
+    complete.add_argument("--residual-risk")
+    complete.add_argument("--rollback")
+    complete.add_argument("--allow-stale-evidence", action="store_true")
+    complete.add_argument("--allow-weak", action="store_true")
+    complete.set_defaults(func=cmd_complete)
+
     intake = sub.add_parser("intake", help="intake commands")
     intake_sub = intake.add_subparsers(dest="intake_command", required=True)
     intake_add = intake_sub.add_parser("add", help="record intake")
@@ -1749,6 +2112,8 @@ def build_parser() -> argparse.ArgumentParser:
     adapter_run.add_argument("--allow-high-risk", action="store_true")
     adapter_run.add_argument("--allow-unavailable", action="store_true")
     adapter_run.add_argument("--allow-raw-prompt", action="store_true")
+    adapter_run.add_argument("--approval-id", type=int)
+    adapter_run.add_argument("--approval-scope")
     adapter_run.add_argument("--changed")
     adapter_run.add_argument("--notes")
     adapter_run.set_defaults(func=cmd_adapter_run)
@@ -1773,6 +2138,8 @@ def build_parser() -> argparse.ArgumentParser:
     approval_request.add_argument("--summary", required=True)
     approval_request.add_argument("--risk", default="high")
     approval_request.add_argument("--requested-by", default="harness")
+    approval_request.add_argument("--scope")
+    approval_request.add_argument("--ttl-minutes", type=int, default=60)
     approval_request.add_argument("--notes")
     approval_request.set_defaults(func=cmd_approval_request)
     approval_resolve = approval_sub.add_parser("resolve", help="resolve a pending human gate")
@@ -1781,6 +2148,11 @@ def build_parser() -> argparse.ArgumentParser:
     approval_resolve.add_argument("--resolved-by", default="human")
     approval_resolve.add_argument("--notes")
     approval_resolve.set_defaults(func=cmd_approval_resolve)
+    approval_check = approval_sub.add_parser("check", help="check approval validity for a scope")
+    approval_check.add_argument("--id", type=int, required=True)
+    approval_check.add_argument("--scope")
+    approval_check.add_argument("--fail-on-invalid", action="store_true")
+    approval_check.set_defaults(func=cmd_approval_check)
 
     bench = sub.add_parser("bench", help="benchmark harness commands")
     bench_sub = bench.add_subparsers(dest="bench_command", required=True)
@@ -1807,6 +2179,8 @@ def build_parser() -> argparse.ArgumentParser:
     run_once.add_argument("--confidence", type=float, default=1.0)
     run_once.add_argument("--timeout", type=int, default=1800)
     run_once.add_argument("--allow-high-risk", action="store_true")
+    run_once.add_argument("--approval-id", type=int)
+    run_once.add_argument("--approval-scope")
     run_once.add_argument("--changed")
     run_once.add_argument("--notes")
     run_once.set_defaults(func=cmd_run_once)
@@ -1838,6 +2212,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("routes", "route_decision"),
         ("approvals", "human_gate"),
         ("benchmarks", "benchmark_run"),
+        ("reports", "completion_report"),
     ]:
         q = query_sub.add_parser(name, help=f"query {name}")
         q.add_argument("--limit", type=int, default=20)

@@ -8,13 +8,13 @@
   - POSIX: `bash harness/init.sh`
 - Standard verification path: run the startup path and any workflow-specific
   evidence listed in `harness/features.json`.
-- Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, `MH-006`, `MH-007`, `MH-008`, `MH-009`, `MH-010`, and `MH-011` are passing.
+- Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, `MH-006`, `MH-007`, `MH-008`, `MH-009`, `MH-010`, `MH-011`, and `MH-012` are passing.
 - Current blockers: none recorded.
 
 ## Best Next Step
 
-Review v0.8 alignment and then design v0.9 agent selection/provider smoke gates
-once route capability gaps are acceptable.
+Review v0.9 gate hardening and then prepare v1.0 stable personal harness
+readiness before provider adapters.
 
 ## Session Log
 
@@ -382,3 +382,54 @@ once route capability gaps are acceptable.
   - UI/browser proof capabilities are seeded as unknown until a concrete browser/a11y tool is connected.
   - Real Claude/Codex provider smoke remains deferred.
 - Best next step: review v0.8 scope, then plan v0.9 agent/provider selection and stronger capability enforcement.
+
+### Session 010
+
+- Date: 2026-07-19
+- Goal: Implement v0.9 core gate hardening before v1.0.
+- Completed:
+  - Added schema version 7 for route optional/required proof details, scoped approval expiry, benchmark scores, and completion reports.
+  - Added `report final` for final completion reports.
+  - Added `complete` for enforcing completion gates before closing a story.
+  - Added stale evidence detection from git head and dirty file state.
+  - Split route gaps into required and optional capabilities.
+  - Added approval scope and expiry.
+  - Added `approval check`.
+  - Allowed high-risk `run once` and `adapter run` to proceed with a valid scoped approval.
+  - Added benchmark scores for quality, cost, adaptiveness, and durability.
+  - Added `harness-pycompile` as a present local `test-runner`.
+- Verification executed:
+  - `python -m py_compile cli\harness.py`
+  - `python -m json.tool harness\skills.json`
+  - `.\harness\harness.ps1 init`
+  - `.\harness\harness.ps1 tool seed`
+  - `.\harness\harness.ps1 route --json ... bugfix`
+  - `.\harness\harness.ps1 route --json ... ui`
+  - `.\harness\harness.ps1 route --json ... approval-required`
+  - `.\harness\harness.ps1 report final --json ... --persist`
+  - `.\harness\harness.ps1 complete --json ...`
+  - `.\harness\harness.ps1 approval check --json ...`
+  - `.\harness\harness.ps1 run once --json ... --approval-id ...`
+  - `.\harness\harness.ps1 bench run --json --fail-on-regression`
+- Evidence recorded:
+  - `harness/v0.9-plan.md`
+  - `harness/v0.9-acceptance.md`
+  - `harness/features.json` updated with `MH-012`
+  - local runtime DB: `harness/harness.db` (ignored by git)
+- Updated files or artifacts:
+  - `cli/harness.py`
+  - `state/schema/007-core-gates.sql`
+  - `harness/skills.json`
+  - `harness/v0.9-plan.md`
+  - `harness/v0.9-acceptance.md`
+  - `docs/GATES.md`
+  - `docs/CLI.md`
+  - `docs/ROUTING.md`
+  - `docs/BENCHMARKS.md`
+  - `harness/features.json`
+  - `harness/progress.md`
+- Known risks:
+  - Benchmark scoring is deterministic controller scoring, not real agent-output quality scoring yet.
+  - UI/browser/a11y capabilities remain unknown until a concrete browser tool is registered.
+  - Provider adapters remain deferred until v1.0 stable semantics are reviewed.
+- Best next step: perform v1.0 readiness review and tighten docs/install path before provider adapters.

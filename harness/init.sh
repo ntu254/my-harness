@@ -32,7 +32,9 @@ if [ "${#missing[@]}" -gt 0 ]; then
 fi
 
 python -m json.tool harness/features.json >/dev/null
+python cli/harness.py init >/dev/null
 
 echo "==> Required files present"
 echo "==> features.json parses"
+echo "==> harness SQLite state initialized"
 echo "==> Next: read harness/progress.md and classify the requested work"

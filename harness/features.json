@@ -78,6 +78,32 @@
         "2026-07-19: no destructive action executed"
       ],
       "notes": "Validated approval-required escalation for deploy/delete simulation."
+    },
+    {
+      "id": "MH-005",
+      "priority": 5,
+      "area": "v0.2",
+      "title": "Implement CLI SQLite MVP",
+      "user_visible_behavior": "A local CLI records intake, story, evidence, trace, and active work in SQLite.",
+      "status": "passing",
+      "verification": [
+        "Run harness/init.ps1",
+        "Run harness/harness.ps1 init",
+        "Record sample intake",
+        "Record sample story",
+        "Record sample evidence",
+        "Record sample trace",
+        "Query active work",
+        "Confirm features.json parses"
+      ],
+      "evidence": [
+        "2026-07-19: .\\harness\\init.ps1 passed with SQLite initialization",
+        "2026-07-19: python -m py_compile cli\\harness.py passed",
+        "2026-07-19: CLI smoke path recorded intake/story/evidence/trace in harness.db",
+        "2026-07-19: story update --expected-revision accepted current revision and rejected stale revision",
+        "2026-07-19: harness/v0.2-acceptance.md recorded v0.2 evidence"
+      ],
+      "notes": "v0.2 CLI/SQLite MVP validated. Local DB is intentionally ignored runtime state."
     }
   ]
 }

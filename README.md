@@ -26,15 +26,21 @@ SQLite, or multi-agent automation.
 - Templates for mini-specs, stories, decisions, validation reports, and
   high-risk story packets.
 
-## What v0.1 Does Not Include
+## What v0.2 Adds
 
-- No CLI.
-- No SQLite.
+- A small Python stdlib CLI.
+- SQLite local state at `harness/harness.db`.
+- Commands for intake, story, evidence, trace, and active-work queries.
+- Optimistic story updates through expected revisions.
+
+## What v0.1 Deferred
+
 - No multi-agent orchestration.
 - No provider-specific build system.
 - No live UI variant mode.
 
-Those come after the manual loop proves useful on real work.
+The CLI and SQLite state spine arrived in v0.2. Orchestration and provider
+adapters come after the state spine proves useful on real work.
 
 ## Start
 
@@ -42,12 +48,14 @@ On Windows:
 
 ```powershell
 .\harness\init.ps1
+.\harness\harness.ps1 query active
 ```
 
 On macOS/Linux:
 
 ```bash
 bash harness/init.sh
+bash harness/harness.sh query active
 ```
 
 Then read:

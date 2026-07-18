@@ -30,6 +30,9 @@ if ($missing.Count -gt 0) {
 
 Get-Content "harness/features.json" -Raw | ConvertFrom-Json | Out-Null
 
+python "cli/harness.py" init | Out-Null
+
 Write-Host "==> Required files present"
 Write-Host "==> features.json parses"
+Write-Host "==> harness SQLite state initialized"
 Write-Host "==> Next: read harness/progress.md and classify the requested work"

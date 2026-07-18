@@ -1,6 +1,8 @@
 # Local runtime state
 harness.db
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 
 # Logs and temporary files
@@ -15,6 +17,8 @@ Thumbs.db
 .vscode/
 
 # Dependency folders if future versions add tooling
+__pycache__/
+*.pyc
 node_modules/
 target/
 dist/

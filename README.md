@@ -11,6 +11,9 @@ The v0.1 principle:
 Use the smallest process that safely proves the work.
 ```
 
+v0.1 is intentionally manual: it proves the operating loop before adding CLI,
+SQLite, or multi-agent automation.
+
 ## What v0.1 Includes
 
 - Short `AGENTS.md` entrypoint.

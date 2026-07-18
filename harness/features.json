@@ -22,7 +22,8 @@
       "evidence": [
         "2026-07-19: .\\harness\\init.ps1 passed",
         "2026-07-19: python -m json.tool harness\\features.json passed",
-        "2026-07-19: rg --files confirmed v0.1 scaffold files"
+        "2026-07-19: rg --files confirmed v0.1 scaffold files",
+        "2026-07-19: harness/v0.1-acceptance.md Test A cold start passed"
       ],
       "notes": "Initial scaffold created and baseline validation passed."
     },
@@ -32,14 +33,18 @@
       "area": "workflow",
       "title": "Validate tiny-change workflow",
       "user_visible_behavior": "A tiny documentation edit completes without heavy process.",
-      "status": "not_started",
+      "status": "passing",
       "verification": [
         "Change one README sentence",
         "Run one focused verification step",
         "Record evidence in progress.md"
       ],
-      "evidence": [],
-      "notes": ""
+      "evidence": [
+        "2026-07-19: README.md tiny clarification added",
+        "2026-07-19: harness/v0.1-acceptance.md Test B passed",
+        "2026-07-19: .\\harness\\init.ps1 passed after README edit"
+      ],
+      "notes": "Validated that tiny docs work does not require story folder or full spec."
     },
     {
       "id": "MH-003",
@@ -54,7 +59,7 @@
         "Record passing evidence"
       ],
       "evidence": [],
-      "notes": ""
+      "notes": "Optional v0.1 acceptance test; not required for v0.1 closure."
     },
     {
       "id": "MH-004",
@@ -62,14 +67,17 @@
       "area": "workflow",
       "title": "Validate high-risk planning workflow",
       "user_visible_behavior": "A dangerous or external request escalates to approval-required without execution.",
-      "status": "not_started",
+      "status": "passing",
       "verification": [
         "Simulate release, deploy, delete, or production migration request",
         "Confirm approval request is produced",
         "Confirm no dangerous action runs"
       ],
-      "evidence": [],
-      "notes": ""
+      "evidence": [
+        "2026-07-19: harness/v0.1-acceptance.md Test D simulated approval-required request",
+        "2026-07-19: no destructive action executed"
+      ],
+      "notes": "Validated approval-required escalation for deploy/delete simulation."
     }
   ]
 }

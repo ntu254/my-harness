@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""my-harness v0.2 SQLite-backed CLI MVP."""
+"""my-harness SQLite-backed CLI."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -47,6 +48,7 @@ STORY_STATUSES = {
 }
 EVIDENCE_RESULTS = {"pass", "fail", "skipped", "partial"}
 TRACE_OUTCOMES = {"completed", "partial", "blocked", "failed"}
+RUN_STATUSES = {"in_progress", "completed", "failed", "blocked", "needs_human"}
 
 
 def db_path() -> Path:
@@ -129,6 +131,89 @@ def validate_choice(value: str, allowed: set[str], label: str) -> str:
     if value not in allowed:
         raise SystemExit(f"invalid {label}: {value}. Use one of: {', '.join(sorted(allowed))}")
     return value
+
+
+def classify_lane(
+    work_type: str,
+    scope: str,
+    uncertainty: str,
+    reversibility: str,
+    risk: str,
+) -> str:
+    if risk == "critical" or reversibility == "irreversible":
+        return "approval_required"
+    if work_type in {"release", "migration", "incident"} and scope in {"infrastructure", "external_system"}:
+        return "approval_required"
+    if risk == "high" or uncertainty == "high" or reversibility == "costly":
+        return "high_risk"
+    if scope in {"infrastructure", "external_system"}:
+        return "high_risk"
+    if risk == "low" and scope == "file" and uncertainty == "low" and reversibility == "easy":
+        return "tiny"
+    return "normal"
+
+
+def sanitize_name(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-") or "run"
+
+
+def run_command(command: str, timeout: int) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        command,
+        cwd=ROOT,
+        shell=True,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+
+
+def write_run_log(run_id: int, story_id: str, stage: str, command: str, result: subprocess.CompletedProcess[str]) -> str:
+    log_dir = ROOT / "harness" / "runs" / f"{sanitize_name(story_id)}-{run_id}"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{stage}.log"
+    log_path.write_text(
+        "\n".join(
+            [
+                f"stage: {stage}",
+                f"command: {command}",
+                f"exit_code: {result.returncode}",
+                "",
+                "stdout:",
+                result.stdout,
+                "",
+                "stderr:",
+                result.stderr,
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return str(log_path.relative_to(ROOT))
+
+
+def insert_evidence(conn: sqlite3.Connection, values: dict[str, Any]) -> int:
+    payload = {
+        "kind": values["kind"],
+        "target": values["target"],
+        "command": values.get("command"),
+        "result": validate_choice(values["result"], EVIDENCE_RESULTS, "result"),
+        "artifact": values.get("artifact"),
+        "story_id": values.get("story_id"),
+        "notes": values.get("notes"),
+        "git_head": git_head(),
+        "dirty_files": git_dirty_files(),
+        "trust": values.get("trust", "tool_generated"),
+    }
+    cur = conn.execute(
+        """
+        INSERT INTO evidence
+          (kind, target, command, result, artifact, story_id, notes, git_head, dirty_files, trust)
+        VALUES
+          (:kind, :target, :command, :result, :artifact, :story_id, :notes, :git_head, :dirty_files, :trust)
+        """,
+        payload,
+    )
+    return int(cur.lastrowid)
 
 
 def cmd_init(args: argparse.Namespace) -> None:
@@ -236,17 +321,213 @@ def cmd_evidence_add(args: argparse.Namespace) -> None:
         "trust": args.trust,
     }
     with connect() as conn:
-        cur = conn.execute(
-            """
-            INSERT INTO evidence
-              (kind, target, command, result, artifact, story_id, notes, git_head, dirty_files, trust)
-            VALUES
-              (:kind, :target, :command, :result, :artifact, :story_id, :notes, :git_head, :dirty_files, :trust)
-            """,
-            values,
-        )
-        values["id"] = cur.lastrowid
+        values["id"] = insert_evidence(conn, values)
     emit(values, args.json)
+
+
+def cmd_run_once(args: argparse.Namespace) -> None:
+    ensure_db()
+    work_type = validate_choice(args.work_type, WORK_TYPES, "work-type")
+    scope = validate_choice(args.scope, SCOPES, "scope")
+    uncertainty = validate_choice(args.uncertainty, UNCERTAINTY, "uncertainty")
+    reversibility = validate_choice(args.reversibility, REVERSIBILITY, "reversibility")
+    risk = validate_choice(args.risk, RISKS, "risk")
+    lane = args.lane or classify_lane(work_type, scope, uncertainty, reversibility, risk)
+    lane = validate_choice(lane, LANES, "lane")
+    if args.timeout < 1:
+        raise SystemExit("timeout must be positive")
+
+    with connect() as conn:
+        intake_id = conn.execute(
+            """
+            INSERT INTO intake
+              (intent, work_type, scope, uncertainty, reversibility, risk, lane, confidence, summary, notes)
+            VALUES
+              (:intent, :work_type, :scope, :uncertainty, :reversibility, :risk, :lane, :confidence, :summary, :notes)
+            """,
+            {
+                "intent": validate_choice(args.intent, INTENTS, "intent"),
+                "work_type": work_type,
+                "scope": scope,
+                "uncertainty": uncertainty,
+                "reversibility": reversibility,
+                "risk": risk,
+                "lane": lane,
+                "confidence": args.confidence,
+                "summary": args.summary,
+                "notes": args.notes,
+            },
+        ).lastrowid
+        conn.execute(
+            """
+            INSERT INTO story (id, title, lane, status, verify_command, notes)
+            VALUES (?, ?, ?, 'planned', ?, ?)
+            """,
+            (args.id, args.summary, lane, args.verify_command, args.notes),
+        )
+        run_id = conn.execute(
+            """
+            INSERT INTO agent_run
+              (intake_id, story_id, lane, status, agent_command, verify_command, timeout_seconds, notes)
+            VALUES
+              (?, ?, ?, 'in_progress', ?, ?, ?, ?)
+            """,
+            (intake_id, args.id, lane, args.agent_command, args.verify_command, args.timeout, args.notes),
+        ).lastrowid
+
+    if lane in {"high_risk", "approval_required"} and not args.allow_high_risk:
+        with connect() as conn:
+            conn.execute(
+                "UPDATE story SET status = 'needs_human', updated_at = datetime('now'), revision = revision + 1 WHERE id = ?",
+                (args.id,),
+            )
+            conn.execute(
+                """
+                UPDATE agent_run
+                SET status = 'needs_human', completed_at = datetime('now'), notes = ?
+                WHERE id = ?
+                """,
+                ("High-risk lane requires --allow-high-risk before command execution.", run_id),
+            )
+            conn.execute(
+                """
+                INSERT INTO trace (summary, outcome, intake_id, story_id, friction, notes)
+                VALUES (?, 'blocked', ?, ?, 'needs human approval', ?)
+                """,
+                (args.summary, intake_id, args.id, f"lane={lane}; command not executed"),
+            )
+        emit(
+            {
+                "run_id": run_id,
+                "intake_id": intake_id,
+                "story_id": args.id,
+                "lane": lane,
+                "status": "needs_human",
+                "executed": False,
+                "reason": "high-risk lane requires --allow-high-risk",
+            },
+            args.json,
+        )
+        return
+
+    evidence_ids: list[int] = []
+    status = "completed"
+    agent_exit: int | None = None
+    verify_exit: int | None = None
+    log_dir: str | None = None
+
+    try:
+        with connect() as conn:
+            conn.execute(
+                "UPDATE story SET status = 'in_progress', updated_at = datetime('now'), revision = revision + 1 WHERE id = ?",
+                (args.id,),
+            )
+        agent_result = run_command(args.agent_command, args.timeout)
+        agent_exit = agent_result.returncode
+        agent_log = write_run_log(run_id, args.id, "agent", args.agent_command, agent_result)
+        log_dir = str(Path(agent_log).parent)
+        with connect() as conn:
+            evidence_ids.append(
+                insert_evidence(
+                    conn,
+                    {
+                        "kind": "agent",
+                        "target": "runner",
+                        "command": args.agent_command,
+                        "result": "pass" if agent_exit == 0 else "fail",
+                        "artifact": agent_log,
+                        "story_id": args.id,
+                        "notes": f"agent exit code {agent_exit}",
+                    },
+                )
+            )
+        if agent_exit != 0:
+            status = "failed"
+        else:
+            with connect() as conn:
+                conn.execute(
+                    "UPDATE story SET status = 'verifying', updated_at = datetime('now'), revision = revision + 1 WHERE id = ?",
+                    (args.id,),
+                )
+            verify_result = run_command(args.verify_command, args.timeout)
+            verify_exit = verify_result.returncode
+            verify_log = write_run_log(run_id, args.id, "verify", args.verify_command, verify_result)
+            with connect() as conn:
+                evidence_ids.append(
+                    insert_evidence(
+                        conn,
+                        {
+                            "kind": "verification",
+                            "target": "runner",
+                            "command": args.verify_command,
+                            "result": "pass" if verify_exit == 0 else "fail",
+                            "artifact": verify_log,
+                            "story_id": args.id,
+                            "notes": f"verify exit code {verify_exit}",
+                        },
+                    )
+                )
+            if verify_exit != 0:
+                status = "failed"
+    except subprocess.TimeoutExpired:
+        status = "failed"
+        with connect() as conn:
+            evidence_ids.append(
+                insert_evidence(
+                    conn,
+                    {
+                        "kind": "runner",
+                        "target": "timeout",
+                        "command": args.agent_command,
+                        "result": "fail",
+                        "story_id": args.id,
+                        "notes": f"command timed out after {args.timeout} seconds",
+                    },
+                )
+            )
+
+    evidence_text = ",".join(str(item) for item in evidence_ids)
+    story_status = "completed" if status == "completed" else "failed"
+    trace_outcome = "completed" if status == "completed" else "failed"
+    with connect() as conn:
+        conn.execute(
+            """
+            UPDATE story
+            SET status = ?, evidence = ?, updated_at = datetime('now'), revision = revision + 1
+            WHERE id = ?
+            """,
+            (story_status, evidence_text, args.id),
+        )
+        conn.execute(
+            """
+            UPDATE agent_run
+            SET status = ?, completed_at = datetime('now'), agent_exit_code = ?,
+                verify_exit_code = ?, evidence_ids = ?, log_dir = ?
+            WHERE id = ?
+            """,
+            (status, agent_exit, verify_exit, evidence_text, log_dir, run_id),
+        )
+        conn.execute(
+            """
+            INSERT INTO trace (summary, outcome, intake_id, story_id, evidence_ids, files_changed, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (args.summary, trace_outcome, intake_id, args.id, evidence_text, args.changed, args.notes),
+        )
+    emit(
+        {
+            "run_id": run_id,
+            "intake_id": intake_id,
+            "story_id": args.id,
+            "lane": lane,
+            "status": status,
+            "agent_exit_code": agent_exit,
+            "verify_exit_code": verify_exit,
+            "evidence_ids": evidence_ids,
+            "log_dir": log_dir,
+        },
+        args.json,
+    )
 
 
 def cmd_trace_add(args: argparse.Namespace) -> None:
@@ -302,7 +583,7 @@ def cmd_query_active(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="harness", description="my-harness CLI MVP")
+    parser = argparse.ArgumentParser(prog="harness", description="my-harness CLI")
     parser.add_argument("--json", action="store_true", help="emit JSON")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -357,6 +638,27 @@ def build_parser() -> argparse.ArgumentParser:
     evidence_add.add_argument("--trust", default="tool_generated")
     evidence_add.set_defaults(func=cmd_evidence_add)
 
+    run = sub.add_parser("run", help="runner commands")
+    run_sub = run.add_subparsers(dest="run_command", required=True)
+    run_once = run_sub.add_parser("once", help="run one orchestrated task")
+    run_once.add_argument("--id", required=True)
+    run_once.add_argument("--summary", required=True)
+    run_once.add_argument("--agent-command", required=True)
+    run_once.add_argument("--verify-command", required=True)
+    run_once.add_argument("--intent", default="modify")
+    run_once.add_argument("--work-type", default="feature")
+    run_once.add_argument("--scope", default="module")
+    run_once.add_argument("--uncertainty", default="medium")
+    run_once.add_argument("--reversibility", default="easy")
+    run_once.add_argument("--risk", default="medium")
+    run_once.add_argument("--lane")
+    run_once.add_argument("--confidence", type=float, default=1.0)
+    run_once.add_argument("--timeout", type=int, default=1800)
+    run_once.add_argument("--allow-high-risk", action="store_true")
+    run_once.add_argument("--changed")
+    run_once.add_argument("--notes")
+    run_once.set_defaults(func=cmd_run_once)
+
     trace = sub.add_parser("trace", help="trace commands")
     trace_sub = trace.add_subparsers(dest="trace_command", required=True)
     trace_add = trace_sub.add_parser("add", help="add trace")
@@ -379,6 +681,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("evidence", "evidence"),
         ("traces", "trace"),
         ("tools", "tool"),
+        ("runs", "agent_run"),
     ]:
         q = query_sub.add_parser(name, help=f"query {name}")
         q.add_argument("--limit", type=int, default=20)

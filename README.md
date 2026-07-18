@@ -33,6 +33,13 @@ SQLite, or multi-agent automation.
 - Commands for intake, story, evidence, trace, and active-work queries.
 - Optimistic story updates through expected revisions.
 
+## What v0.3 Adds
+
+- A `run once` orchestration command for one local task.
+- Automatic lane classification from risk, scope, uncertainty, and reversibility.
+- Guarded execution for `high_risk` and `approval_required` lanes.
+- Runtime logs under ignored local state at `harness/runs/`.
+
 ## What v0.1 Deferred
 
 - No multi-agent orchestration.
@@ -49,6 +56,7 @@ On Windows:
 ```powershell
 .\harness\init.ps1
 .\harness\harness.ps1 query active
+.\harness\harness.ps1 run once --help
 ```
 
 On macOS/Linux:
@@ -56,6 +64,7 @@ On macOS/Linux:
 ```bash
 bash harness/init.sh
 bash harness/harness.sh query active
+bash harness/harness.sh run once --help
 ```
 
 Then read:
@@ -64,7 +73,8 @@ Then read:
 2. `harness/progress.md`
 3. `harness/features.json`
 4. `docs/INTAKE.md`
-5. The workflow doc that matches the request
+5. `docs/RUNNER.md` when executing orchestrated local tasks
+6. The workflow doc that matches the request
 
 ## Completion Rule
 

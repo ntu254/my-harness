@@ -4,6 +4,7 @@ harness.db
 *.db-wal
 *.db-shm
 *.sqlite
+harness/runs/
 
 # Logs and temporary files
 *.log

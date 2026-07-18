@@ -104,6 +104,31 @@
         "2026-07-19: harness/v0.2-acceptance.md recorded v0.2 evidence"
       ],
       "notes": "v0.2 CLI/SQLite MVP validated. Local DB is intentionally ignored runtime state."
+    },
+    {
+      "id": "MH-006",
+      "priority": 6,
+      "area": "v0.3",
+      "title": "Implement single-task orchestration runner",
+      "user_visible_behavior": "A local runner can classify one task, execute allowed commands, verify results, record evidence, and block high-risk execution without explicit approval.",
+      "status": "passing",
+      "verification": [
+        "Run harness/init.ps1",
+        "Run python -m py_compile cli/harness.py",
+        "Run harness run once for a normal task",
+        "Confirm normal run creates intake/story/run/evidence/trace records",
+        "Run harness run once for a critical task without --allow-high-risk",
+        "Confirm critical run becomes needs_human and does not execute command",
+        "Confirm runtime logs are ignored by git"
+      ],
+      "evidence": [
+        "2026-07-19: harness/v0.3-plan.md defines v0.3 scope and gates",
+        "2026-07-19: .\\harness\\harness.ps1 --json run once --id MH-006 completed with agent_exit_code 0 and verify_exit_code 0",
+        "2026-07-19: .\\harness\\harness.ps1 --json run once --id MH-006-GUARD returned lane approval_required and status needs_human",
+        "2026-07-19: guard smoke confirmed harness\\should-not-exist.txt was not created",
+        "2026-07-19: harness/v0.3-acceptance.md recorded v0.3 evidence"
+      ],
+      "notes": "v0.3 runner MVP validated. Provider-specific Claude/Codex adapters remain deferred."
     }
   ]
 }

@@ -1,9 +1,10 @@
 # CLI
 
-`my-harness` v0.2 adds a small SQLite-backed CLI.
+`my-harness` provides a small SQLite-backed CLI.
 
 The CLI is intentionally narrow. It records intake, stories, evidence, traces,
-and active work. It does not orchestrate agents or run dangerous actions.
+active work, and single-task runner attempts. Guarded high-risk runs are
+recorded but not executed without explicit approval.
 
 ## Start
 
@@ -36,11 +37,13 @@ harness story add
 harness story update
 harness evidence add
 harness trace add
+harness run once
 harness query active
 harness query intakes
 harness query stories
 harness query evidence
 harness query traces
+harness query runs
 ```
 
 Every command accepts `--json` at the top level:
@@ -74,6 +77,21 @@ Every command accepts `--json` at the top level:
   --result pass `
   --command ".\harness\harness.ps1 query active" `
   --story MH-005
+```
+
+Runner example:
+
+```powershell
+.\harness\harness.ps1 run once `
+  --id MH-006 `
+  --summary "Implement runner MVP" `
+  --agent-command "python --version" `
+  --verify-command "python -m py_compile cli\harness.py" `
+  --work-type harness_improvement `
+  --scope module `
+  --risk low `
+  --uncertainty low `
+  --reversibility easy
 ```
 
 ## State Transition Safety

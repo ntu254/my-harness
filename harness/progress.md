@@ -8,12 +8,13 @@
   - POSIX: `bash harness/init.sh`
 - Standard verification path: run the startup path and any workflow-specific
   evidence listed in `harness/features.json`.
-- Active feature: none. `MH-001`, `MH-002`, `MH-004`, and `MH-005` are passing.
+- Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, and `MH-006` are passing.
 - Current blockers: none recorded.
 
 ## Best Next Step
 
-Plan v0.3 orchestration runner on top of the validated CLI/SQLite state spine.
+Plan v0.4 provider adapters and migration discipline on top of the validated
+single-task runner.
 
 ## Session Log
 
@@ -101,3 +102,50 @@ Plan v0.3 orchestration runner on top of the validated CLI/SQLite state spine.
 - Known risks: POSIX wrapper not executed in a POSIX shell in this session.
 - Best next step: design v0.3 orchestration runner, including task execution
   lifecycle, agent command adapter, tool policy, and resumable handoff.
+
+### Session 004
+
+- Date: 2026-07-19
+- Goal: Implement v0.3 single-task orchestration runner.
+- Completed:
+  - Added `agent_run` state table.
+  - Added `harness run once`.
+  - Added automatic lane classification.
+  - Added guarded execution for `high_risk` and `approval_required` lanes.
+  - Added command log capture under ignored runtime state.
+  - Added runner docs and v0.3 plan.
+- Verification executed:
+  - `.\harness\init.ps1`
+  - `python -m json.tool harness\features.json`
+  - `python -m py_compile cli\harness.py`
+  - `.\harness\harness.ps1 run once --help`
+  - `.\harness\harness.ps1 --json run once --id MH-006 ...`
+  - `.\harness\harness.ps1 --json run once --id MH-006-GUARD ...`
+  - `.\harness\harness.ps1 --json query runs`
+  - `.\harness\harness.ps1 --json query stories`
+  - `git diff --check`
+- Evidence recorded:
+  - `harness/v0.3-plan.md`
+  - `harness/v0.3-acceptance.md`
+  - `harness/features.json`
+  - local runtime DB: `harness/harness.db` (ignored by git)
+  - local runtime logs: `harness/runs/` (ignored by git)
+- Commit: recorded in the latest `origin/main` history after push.
+- Updated files or artifacts:
+  - `.gitignore`
+  - `README.md`
+  - `docs/CLI.md`
+  - `docs/RUNNER.md`
+  - `harness.yaml`
+  - `harness/features.json`
+  - `harness/progress.md`
+  - `harness/v0.3-plan.md`
+  - `harness/v0.3-acceptance.md`
+  - `cli/harness.py`
+  - `state/schema/001-init.sql`
+- Known risks:
+  - POSIX wrapper not executed in a POSIX shell in this session.
+  - No provider-specific Claude/Codex adapter yet.
+  - Schema migration is still simple `CREATE TABLE IF NOT EXISTS` evolution.
+- Best next step: design v0.4 adapter contract, migration runner, and automated
+  check command.

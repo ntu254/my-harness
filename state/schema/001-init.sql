@@ -81,3 +81,23 @@ CREATE TABLE IF NOT EXISTS tool (
   notes TEXT,
   CHECK(availability IN ('present','missing','unknown','inactive'))
 );
+
+CREATE TABLE IF NOT EXISTS agent_run (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  completed_at TEXT,
+  intake_id INTEGER REFERENCES intake(id),
+  story_id TEXT REFERENCES story(id),
+  lane TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'in_progress',
+  agent_command TEXT NOT NULL,
+  verify_command TEXT NOT NULL,
+  timeout_seconds INTEGER NOT NULL DEFAULT 1800,
+  agent_exit_code INTEGER,
+  verify_exit_code INTEGER,
+  evidence_ids TEXT,
+  log_dir TEXT,
+  notes TEXT,
+  CHECK(lane IN ('tiny','normal','high_risk','approval_required')),
+  CHECK(status IN ('in_progress','completed','failed','blocked','needs_human'))
+);

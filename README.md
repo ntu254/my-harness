@@ -54,6 +54,13 @@ SQLite, or multi-agent automation.
 - Prompt-file rendering and `adapter run --prompt-file`.
 - Safer template placeholders such as `{prompt_shell}` and `{prompt_file_shell}`.
 
+## What v0.6 Adds
+
+- Adapter `argv` command mode for shell-free execution where possible.
+- Prompt template files with `adapter run --prompt-template` and `--var key=value`.
+- Runtime recording of command mode and rendered argv.
+- A reusable adapter smoke prompt template.
+
 ## What v0.1 Deferred
 
 - No multi-agent orchestration.

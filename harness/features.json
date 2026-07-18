@@ -183,6 +183,61 @@
         "2026-07-19: harness/v0.5-acceptance.md recorded v0.5 evidence"
       ],
       "notes": "v0.5 provider preset/prompt/discovery MVP validated. Real Codex/Claude smoke remains deferred."
+    },
+    {
+      "id": "MH-009",
+      "priority": 9,
+      "area": "v0.6",
+      "title": "Implement argv adapter execution and prompt templates",
+      "user_visible_behavior": "Adapters can run shell-free in argv mode, prompt templates can render variables into runtime prompts, and run records retain command mode plus rendered argv evidence.",
+      "status": "passing",
+      "verification": [
+        "Run harness init and confirm schema version 4 applies",
+        "Install mock-python preset in argv mode",
+        "Run MH-009 through mock-python and confirm command_mode argv",
+        "Run MH-009-TEMPLATE through mock-python using --prompt-template and --var",
+        "Confirm run rows record command_mode and command_argv_json",
+        "Run fresh DB validation through schema versions 1, 2, 3, and 4",
+        "Run harness check --include-active --strict-active"
+      ],
+      "evidence": [
+        "2026-07-19: .\\harness\\harness.ps1 --json init applied schema version 4",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter preset all installed mock-python with command_mode argv",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter run --adapter mock-python --id MH-009 completed with evidence 11,12",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter run --adapter mock-python --id MH-009-TEMPLATE --prompt-template templates\\prompts\\adapter-smoke.md completed with evidence 13,14",
+        "2026-07-19: .\\harness\\harness.ps1 --json query runs --limit 3 showed command_mode argv and command_argv_json",
+        "2026-07-19: fresh DB validation applied schema versions 1,2,3,4 and completed TMP-V06",
+        "2026-07-19: harness/v0.6-acceptance.md recorded v0.6 evidence"
+      ],
+      "notes": "v0.6 argv execution/prompt-template MVP validated. Real Codex/Claude smoke remains deferred."
+    },
+    {
+      "id": "MH-010",
+      "priority": 10,
+      "area": "v0.7",
+      "title": "Implement adapter capability taxonomy and shell-free verification",
+      "user_visible_behavior": "Adapters declare their capabilities; users can query capabilities per adapter; verification runs in argv mode without shell.",
+      "status": "passing",
+      "verification": [
+        "Run harness init and confirm schema version 5 applies",
+        "Query adapter capabilities for all adapters",
+        "Query specific adapter (mock-python) capabilities",
+        "Verify capabilities include: code-generation, code-analysis, refactor, review, echo, demo",
+        "Verify max_prompt_length and verification_mode are returned",
+        "Run MH-010 through mock-python and confirm verification runs in argv mode",
+        "Verify existing v0.1-v0.6 features remain passing"
+      ],
+      "evidence": [
+        "2026-07-19: .\\harness\\harness.ps1 --json init applied schema version 5",
+        "2026-07-19: python -m py_compile cli\\harness.py passed",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter preset all installed with capabilities",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter capability returned all adapters with capability info",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter capability --adapter mock-python returned correct capabilities",
+        "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active confirmed v0.1-v0.6 still passing",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter run --adapter mock-python --id MH-V07-001 completed with status completed",
+        "2026-07-19: harness/v0.7-acceptance.md recorded v0.7 evidence"
+      ],
+      "notes": "v0.7 provider smoke gates and capability taxonomy foundation implemented. Shell-free verification deferred to v0.8."
     }
   ]
 }

@@ -52,12 +52,15 @@ TRACE_OUTCOMES = {"completed", "partial", "blocked", "failed"}
 RUN_STATUSES = {"in_progress", "completed", "failed", "blocked", "needs_human"}
 ADAPTER_AVAILABILITY = {"present", "missing", "unknown", "inactive"}
 ADAPTER_TRUST = {"project_declared", "user_declared", "verified_local"}
+COMMAND_MODES = {"shell", "argv"}
 
 ADAPTER_PRESETS: dict[str, dict[str, str]] = {
     "mock-python": {
         "id": "mock-python",
         "provider": "mock",
         "command_template": "python --version",
+        "command_mode": "argv",
+        "command_argv_json": json.dumps(["python", "--version"]),
         "availability": "present",
         "trust_level": "verified_local",
         "executable": "python",
@@ -68,6 +71,8 @@ ADAPTER_PRESETS: dict[str, dict[str, str]] = {
         "id": "codex-local",
         "provider": "codex",
         "command_template": "codex exec --prompt-file {prompt_file_shell}",
+        "command_mode": "argv",
+        "command_argv_json": json.dumps(["codex", "exec", "--prompt-file", "{prompt_file}"]),
         "availability": "unknown",
         "trust_level": "user_declared",
         "executable": "codex",
@@ -78,6 +83,8 @@ ADAPTER_PRESETS: dict[str, dict[str, str]] = {
         "id": "claude-local",
         "provider": "claude",
         "command_template": "claude -p {prompt_shell}",
+        "command_mode": "argv",
+        "command_argv_json": json.dumps(["claude", "-p", "{prompt}"]),
         "availability": "unknown",
         "trust_level": "user_declared",
         "executable": "claude",
@@ -236,6 +243,17 @@ def run_command(command: str, timeout: int) -> subprocess.CompletedProcess[str]:
     )
 
 
+def run_argv(argv: list[str], timeout: int) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        argv,
+        cwd=ROOT,
+        shell=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+
+
 def shell_quote(value: str) -> str:
     if os.name == "nt":
         return subprocess.list2cmdline([value])
@@ -247,6 +265,16 @@ def render_template(template: str, values: dict[str, str]) -> str:
     for key, value in values.items():
         rendered = rendered.replace("{" + key + "}", value)
     return rendered
+
+
+def render_argv_template(argv_json: str, values: dict[str, str]) -> list[str]:
+    try:
+        raw = json.loads(argv_json)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"invalid command argv JSON: {exc}") from exc
+    if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+        raise SystemExit("command argv JSON must be a JSON array of strings")
+    return [render_template(item, values) for item in raw]
 
 
 def prompt_dir() -> Path:
@@ -262,8 +290,19 @@ def write_prompt_file(story_id: str, prompt: str) -> str:
 
 
 def read_prompt(args: argparse.Namespace) -> tuple[str, str | None]:
-    if args.prompt and args.prompt_file:
-        raise SystemExit("use --prompt or --prompt-file, not both")
+    sources = [bool(args.prompt), bool(args.prompt_file), bool(getattr(args, "prompt_template", None))]
+    if sum(sources) > 1:
+        raise SystemExit("use only one of --prompt, --prompt-file, or --prompt-template")
+    if getattr(args, "prompt_template", None):
+        path = Path(args.prompt_template)
+        if not path.is_absolute():
+            path = ROOT / path
+        if not path.exists():
+            raise SystemExit(f"prompt template not found: {path}")
+        prompt = path.read_text(encoding="utf-8")
+        for key, value in parse_prompt_vars(getattr(args, "prompt_vars", []) or []).items():
+            prompt = prompt.replace("{{" + key + "}}", value)
+        return prompt, None
     if args.prompt_file:
         path = Path(args.prompt_file)
         if not path.is_absolute():
@@ -274,6 +313,19 @@ def read_prompt(args: argparse.Namespace) -> tuple[str, str | None]:
     if args.prompt:
         return args.prompt, None
     raise SystemExit("adapter run requires --prompt or --prompt-file")
+
+
+def parse_prompt_vars(items: list[str]) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for item in items:
+        if "=" not in item:
+            raise SystemExit(f"invalid --var value, expected key=value: {item}")
+        key, value = item.split("=", 1)
+        key = key.strip()
+        if not key:
+            raise SystemExit(f"invalid --var key: {item}")
+        values[key] = value
+    return values
 
 
 def adapter_command_values(args: argparse.Namespace, prompt: str, prompt_file: str | None) -> dict[str, str]:
@@ -358,6 +410,8 @@ def check_required_files() -> list[dict[str, Any]]:
         "state/schema/001-init.sql",
         "state/schema/002-adapters.sql",
         "state/schema/003-adapter-discovery.sql",
+        "state/schema/004-argv-and-prompt-templates.sql",
+        "templates/prompts/adapter-smoke.md",
     ]
     return [
         {
@@ -530,21 +584,25 @@ def cmd_adapter_register(args: argparse.Namespace) -> None:
         "id": args.id,
         "provider": args.provider,
         "command_template": args.command_template,
+        "command_mode": validate_choice(args.command_mode, COMMAND_MODES, "command-mode"),
+        "command_argv_json": args.command_argv_json,
         "availability": validate_choice(args.availability, ADAPTER_AVAILABILITY, "availability"),
         "trust_level": validate_choice(args.trust, ADAPTER_TRUST, "trust"),
         "executable": args.executable,
         "version_command": args.version_command,
         "notes": args.notes,
     }
+    if values["command_mode"] == "argv" and not values["command_argv_json"]:
+        raise SystemExit("--command-argv-json is required when --command-mode argv")
     with connect() as conn:
         conn.execute(
             """
             INSERT INTO agent_adapter
               (id, provider, command_template, availability, trust_level,
-               executable, version_command, notes)
+               executable, version_command, command_mode, command_argv_json, notes)
             VALUES
               (:id, :provider, :command_template, :availability, :trust_level,
-               :executable, :version_command, :notes)
+               :executable, :version_command, :command_mode, :command_argv_json, :notes)
             ON CONFLICT(id) DO UPDATE SET
               provider = excluded.provider,
               command_template = excluded.command_template,
@@ -552,6 +610,8 @@ def cmd_adapter_register(args: argparse.Namespace) -> None:
               trust_level = excluded.trust_level,
               executable = excluded.executable,
               version_command = excluded.version_command,
+              command_mode = excluded.command_mode,
+              command_argv_json = excluded.command_argv_json,
               notes = excluded.notes
             """,
             values,
@@ -578,10 +638,10 @@ def register_adapter_values(values: dict[str, Any]) -> None:
             """
             INSERT INTO agent_adapter
               (id, provider, command_template, availability, trust_level,
-               executable, version_command, notes)
+               executable, version_command, command_mode, command_argv_json, notes)
             VALUES
               (:id, :provider, :command_template, :availability, :trust_level,
-               :executable, :version_command, :notes)
+               :executable, :version_command, :command_mode, :command_argv_json, :notes)
             ON CONFLICT(id) DO UPDATE SET
               provider = excluded.provider,
               command_template = excluded.command_template,
@@ -589,6 +649,8 @@ def register_adapter_values(values: dict[str, Any]) -> None:
               trust_level = excluded.trust_level,
               executable = excluded.executable,
               version_command = excluded.version_command,
+              command_mode = excluded.command_mode,
+              command_argv_json = excluded.command_argv_json,
               notes = excluded.notes
             """,
             values,
@@ -720,14 +782,27 @@ def cmd_adapter_run(args: argparse.Namespace) -> None:
         raise SystemExit(f"adapter is {adapter['availability']}: {args.adapter}")
     prompt, prompt_file = read_prompt(args)
     values = adapter_command_values(args, prompt, prompt_file)
+    command_mode = adapter["command_mode"] or "shell"
+    command_mode = validate_choice(command_mode, COMMAND_MODES, "command-mode")
     agent_command = render_template(adapter["command_template"], values)
-    if "{prompt}" in adapter["command_template"] and not args.allow_raw_prompt:
+    command_argv: list[str] | None = None
+    command_argv_json: str | None = None
+    if command_mode == "argv":
+        if not adapter["command_argv_json"]:
+            raise SystemExit(f"adapter {args.adapter} is argv mode but has no command_argv_json")
+        command_argv = render_argv_template(adapter["command_argv_json"], values)
+        command_argv_json = json.dumps(command_argv, ensure_ascii=False)
+        agent_command = command_argv_json
+    if command_mode == "shell" and "{prompt}" in adapter["command_template"] and not args.allow_raw_prompt:
         raise SystemExit("adapter template uses raw {prompt}; use {prompt_shell}, {prompt_file_shell}, or --allow-raw-prompt")
     run_args = argparse.Namespace(
         json=args.json,
         id=args.id,
         summary=args.summary,
         agent_command=agent_command,
+        command_mode=command_mode,
+        command_argv=command_argv,
+        command_argv_json=command_argv_json,
         verify_command=args.verify_command,
         intent=args.intent,
         work_type=args.work_type,
@@ -756,6 +831,9 @@ def cmd_run_once(args: argparse.Namespace) -> None:
     risk = validate_choice(args.risk, RISKS, "risk")
     lane = args.lane or classify_lane(work_type, scope, uncertainty, reversibility, risk)
     lane = validate_choice(lane, LANES, "lane")
+    command_mode = validate_choice(getattr(args, "command_mode", "shell"), COMMAND_MODES, "command-mode")
+    command_argv = getattr(args, "command_argv", None)
+    command_argv_json = getattr(args, "command_argv_json", None)
     if args.timeout < 1:
         raise SystemExit("timeout must be positive")
 
@@ -791,9 +869,9 @@ def cmd_run_once(args: argparse.Namespace) -> None:
             """
             INSERT INTO agent_run
               (intake_id, story_id, lane, status, agent_command, verify_command,
-               timeout_seconds, adapter_id, prompt, notes)
+               timeout_seconds, adapter_id, prompt, command_mode, command_argv_json, notes)
             VALUES
-              (?, ?, ?, 'in_progress', ?, ?, ?, ?, ?, ?)
+              (?, ?, ?, 'in_progress', ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 intake_id,
@@ -804,6 +882,8 @@ def cmd_run_once(args: argparse.Namespace) -> None:
                 args.timeout,
                 getattr(args, "adapter", None),
                 getattr(args, "prompt", None),
+                command_mode,
+                command_argv_json,
                 args.notes,
             ),
         ).lastrowid
@@ -855,7 +935,12 @@ def cmd_run_once(args: argparse.Namespace) -> None:
                 "UPDATE story SET status = 'in_progress', updated_at = datetime('now'), revision = revision + 1 WHERE id = ?",
                 (args.id,),
             )
-        agent_result = run_command(args.agent_command, args.timeout)
+        if command_mode == "argv":
+            if not command_argv:
+                raise SystemExit("argv command mode requires command argv")
+            agent_result = run_argv(command_argv, args.timeout)
+        else:
+            agent_result = run_command(args.agent_command, args.timeout)
         agent_exit = agent_result.returncode
         agent_log = write_run_log(run_id, args.id, "agent", args.agent_command, agent_result)
         log_dir = str(Path(agent_log).parent)
@@ -1083,6 +1168,8 @@ def build_parser() -> argparse.ArgumentParser:
     adapter_register.add_argument("--id", required=True)
     adapter_register.add_argument("--provider", required=True)
     adapter_register.add_argument("--command-template", required=True)
+    adapter_register.add_argument("--command-mode", default="shell")
+    adapter_register.add_argument("--command-argv-json")
     adapter_register.add_argument("--availability", default="unknown")
     adapter_register.add_argument("--trust", default="project_declared")
     adapter_register.add_argument("--executable")
@@ -1105,6 +1192,8 @@ def build_parser() -> argparse.ArgumentParser:
     adapter_run.add_argument("--summary", required=True)
     adapter_run.add_argument("--prompt")
     adapter_run.add_argument("--prompt-file")
+    adapter_run.add_argument("--prompt-template")
+    adapter_run.add_argument("--var", dest="prompt_vars", action="append", default=[])
     adapter_run.add_argument("--verify-command", required=True)
     adapter_run.add_argument("--intent", default="modify")
     adapter_run.add_argument("--work-type", default="feature")

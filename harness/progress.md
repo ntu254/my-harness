@@ -8,13 +8,13 @@
   - POSIX: `bash harness/init.sh`
 - Standard verification path: run the startup path and any workflow-specific
   evidence listed in `harness/features.json`.
-- Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, `MH-006`, `MH-007`, and `MH-008` are passing.
+- Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, `MH-006`, `MH-007`, `MH-008`, and `MH-009` are passing.
 - Current blockers: none recorded.
 
 ## Best Next Step
 
-Plan v0.6 real provider smoke gates, prompt template files, and shell-free
-adapter execution on top of the validated preset/discovery layer.
+Implement v0.8 capability validation and shell-free verification mode, then real
+provider smoke gates (Claude/Codex adapters) once capabilities are enforced.
 
 ## Session Log
 
@@ -248,3 +248,90 @@ adapter execution on top of the validated preset/discovery layer.
   - Command templates still execute through a shell.
 - Best next step: design v0.6 provider smoke gates, prompt template files, and
   shell-free adapter execution for safer command construction.
+
+### Session 007
+
+- Date: 2026-07-19
+- Goal: Implement v0.6 argv adapter execution and prompt templates.
+- Completed:
+  - Added `state/schema/004-argv-and-prompt-templates.sql`.
+  - Added adapter `command_mode`.
+  - Added adapter `command_argv_json`.
+  - Added shell-free argv execution for adapter agent commands.
+  - Added `adapter run --prompt-template`.
+  - Added repeated `--var key=value` prompt variables.
+  - Added `templates/prompts/adapter-smoke.md`.
+- Verification executed:
+  - `.\harness\harness.ps1 --json init`
+  - `python -m py_compile cli\harness.py`
+  - `.\harness\harness.ps1 --json adapter preset all`
+  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-009 ...`
+  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-009-TEMPLATE --prompt-template ...`
+  - `.\harness\harness.ps1 --json query runs --limit 3`
+  - fresh DB validation through schema versions `1,2,3,4`
+  - `.\harness\harness.ps1 --json check --include-active --strict-active`
+- Evidence recorded:
+  - `harness/v0.6-plan.md`
+  - `harness/v0.6-acceptance.md`
+  - `harness/features.json`
+  - local runtime DB: `harness/harness.db` (ignored by git)
+  - local runtime logs: `harness/runs/` (ignored by git)
+  - local runtime prompts: `harness/prompts/` (ignored by git)
+- Commit: recorded in the latest `origin/main` history after push.
+- Updated files or artifacts:
+  - `README.md`
+  - `docs/ADAPTERS.md`
+  - `docs/CHECKS.md`
+  - `docs/CLI.md`
+  - `harness.yaml`
+  - `harness/features.json`
+  - `harness/progress.md`
+  - `harness/v0.6-plan.md`
+  - `harness/v0.6-acceptance.md`
+  - `cli/harness.py`
+  - `state/schema/004-argv-and-prompt-templates.sql`
+  - `templates/prompts/adapter-smoke.md`
+- Known risks:
+  - POSIX wrapper not executed in a POSIX shell in this session.
+  - Verification commands still run through shell mode.
+  - Real Codex and Claude provider smoke remains deferred.
+- Best next step: design v0.7 provider smoke gates, adapter capability taxonomy,
+  and shell-free verification commands.
+
+### Session 008
+
+- Date: 2026-07-19
+- Goal: Implement v0.7 adapter capability taxonomy and schema preparation for shell-free verification.
+- Completed:
+  - Added `state/schema/005-adapter-capabilities.sql` with capability fields to agent_adapter.
+  - Updated ADAPTER_PRESETS with capabilities_json, max_prompt_length, and verification_mode.
+  - Implemented `adapter capability` query command.
+  - Updated `adapter register` to accept and store capability metadata.
+  - Added verification_mode field (preparation for future shell-free execution).
+  - Updated parser with --capabilities, --max-prompt-length, --verification-mode arguments.
+- Verification executed:
+  - `.\harness\harness.ps1 --json init` applied schema version 5.
+  - `python -m py_compile cli\harness.py` compiled successfully.
+  - `.\harness\harness.ps1 --json adapter preset all` installed with capabilities.
+  - `.\harness\harness.ps1 --json adapter capability` queried all adapters.
+  - `.\harness\harness.ps1 --json adapter capability --adapter mock-python` queried specific adapter.
+  - `.\harness\harness.ps1 check --include-active --strict-active` confirmed v0.1-v0.6 still passing.
+  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-V07-001 ...` completed successfully.
+- Evidence recorded:
+  - `harness/v0.7-plan.md` defines v0.7 scope and gates.
+  - `harness/v0.7-acceptance.md` recorded v0.7 evidence and results.
+  - `harness/features.json` updated with MH-010 (v0.7 feature).
+- Commit: recorded in latest `origin/main` history after push.
+- Updated files or artifacts:
+  - `cli/harness.py` - added capability support and query commands
+  - `state/schema/005-adapter-capabilities.sql` - new schema migration
+  - `harness/v0.7-plan.md` - v0.7 planning document
+  - `harness/v0.7-acceptance.md` - v0.7 acceptance criteria and evidence
+  - `harness/features.json` - added MH-010 feature
+  - `harness/progress.md` - updated with session log
+- Known risks:
+  - Verification commands still execute through shell (argv mode not yet enforced).
+  - Real Claude/Codex adapters not smoke-tested yet.
+  - Capability validation/enforcement not yet implemented.
+- Best next step: implement v0.8 capability validation and shell-free verification mode
+  enforcement before real provider smoke gates.

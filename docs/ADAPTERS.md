@@ -14,6 +14,8 @@ verification, and handoff.
   --id mock-python `
   --provider mock `
   --command-template "python --version" `
+  --command-mode argv `
+  --command-argv-json "[`"python`", `"--version`"]" `
   --availability present `
   --trust verified_local `
   --notes "local smoke adapter"
@@ -87,6 +89,20 @@ Prompt-file input:
   --verify-command "python -m py_compile cli/harness.py"
 ```
 
+Prompt-template input:
+
+```powershell
+.\harness\harness.ps1 adapter run `
+  --adapter mock-python `
+  --id MH-009-TEMPLATE `
+  --summary "Validate prompt template rendering" `
+  --prompt-template templates\prompts\adapter-smoke.md `
+  --var "task=Validate prompt template" `
+  --var "context=v0.6 smoke" `
+  --var "outcome=runner completes" `
+  --verify-command "python -m py_compile cli/harness.py"
+```
+
 When `--prompt` is used, the harness writes a local prompt file under:
 
 ```text
@@ -94,6 +110,16 @@ harness/prompts/
 ```
 
 That directory is ignored by git.
+
+## Command Modes
+
+Adapters can run in two modes:
+
+- `shell`: render one command string and execute it through the shell.
+- `argv`: render a JSON array of arguments and execute it with `shell=False`.
+
+Prefer `argv` mode when possible. It avoids shell parsing for the agent command.
+The built-in presets use `argv` mode.
 
 The adapter run creates a normal `agent_run` record. The run stores:
 
@@ -125,6 +151,8 @@ Example shape:
   --id codex-local `
   --provider codex `
   --command-template "codex exec --prompt-file {prompt_file_shell}" `
+  --command-mode argv `
+  --command-argv-json "[`"codex`", `"exec`", `"--prompt-file`", `"{prompt_file}`"]" `
   --availability unknown `
   --trust user_declared
 ```

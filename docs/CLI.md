@@ -125,6 +125,20 @@ Adapter example:
   --verify-command "python -m py_compile cli/harness.py"
 ```
 
+Prompt template example:
+
+```powershell
+.\harness\harness.ps1 adapter run `
+  --adapter mock-python `
+  --id MH-009-TEMPLATE `
+  --summary "Validate prompt template rendering" `
+  --prompt-template templates\prompts\adapter-smoke.md `
+  --var "task=Validate prompt template" `
+  --var "context=v0.6 smoke" `
+  --var "outcome=runner completes" `
+  --verify-command "python -m py_compile cli/harness.py"
+```
+
 Preset and discovery example:
 
 ```powershell

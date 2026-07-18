@@ -49,7 +49,8 @@ smallest CLI/SQLite slice.
 - Evidence recorded:
   - `harness/v0.1-acceptance.md`
   - `harness/features.json`
-- Commit: `699490d` pending push at time of recording.
+- Commit: acceptance closure pushed to `origin/main`; use `git log --oneline -2`
+  for the exact current history.
 - Updated files or artifacts:
   - `README.md`
   - `harness/v0.1-acceptance.md`

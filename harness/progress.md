@@ -433,3 +433,21 @@ readiness before provider adapters.
   - UI/browser/a11y capabilities remain unknown until a concrete browser tool is registered.
   - Provider adapters remain deferred until v1.0 stable semantics are reviewed.
 - Best next step: perform v1.0 readiness review and tighten docs/install path before provider adapters.
+
+### Session 011
+
+- Date: 2026-07-19
+- Goal: Align `AGENTS.md` with long-running coding-agent continuity rules.
+- Completed:
+  - Restored the core operating principle: leave the repository ready for the next session without guessing.
+  - Added canonical artifact mapping from older templates (`feature_list.json`, `claude-progress.md`, `init.sh`) to this repo's actual files.
+  - Expanded startup workflow with `pwd`, progress/features reads, recent git history, init, baseline verification, tool seed, routing, and one-feature focus.
+  - Added explicit completion and end-of-session rules.
+- Verification executed:
+  - `.\harness\harness.ps1 check --include-active --strict-active`
+- Evidence recorded:
+  - `AGENTS.md` updated.
+  - `harness/progress.md` updated.
+- Known risks:
+  - None for this documentation-only alignment.
+- Best next step: continue v1.0 readiness work after confirming `AGENTS.md` remains aligned with v0.1-v0.9 behavior.

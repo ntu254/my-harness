@@ -1,11 +1,29 @@
 # Agent Instructions
 
-This repository uses `my-harness` through v0.9. The harness is the control
-layer agents touch; the app or target repository is what users touch.
+This repository is designed for long-running coding-agent work. The goal is not
+to maximize raw code output. The goal is to leave the repository in a state
+where the next session can continue without guessing.
+
+This repository uses `my-harness` through v0.9. The harness is the control layer
+agents touch; the app or target repository is what users touch.
 
 Use the smallest process that safely proves the work. Tiny work must stay
 lightweight. High-risk or external work must stop at the human gate unless a
 valid scoped approval exists.
+
+## Durable Artifacts
+
+Older continuity templates may call these `feature_list.json`,
+`claude-progress.md`, and `init.sh`. In this repository, the canonical files
+are:
+
+- `harness/features.json`: source of truth for feature status and evidence.
+- `harness/progress.md`: session log, verified state, blockers, and next step.
+- `harness/init.sh` and `harness/init.ps1`: startup/bootstrap paths.
+- `harness/harness.sh` and `harness/harness.ps1`: CLI entrypoints.
+- `session-handoff.md`: optional short handoff for unusually large sessions.
+
+Prefer durable repository artifacts over chat-only summaries.
 
 ## Current Capability Surface
 
@@ -33,28 +51,57 @@ valid scoped approval exists.
 
 ## Startup For Change Work
 
-1. Confirm the repository root.
-2. Read `harness/progress.md`.
-3. Read `harness/features.json`.
-4. Initialize local state:
+Before writing code:
+
+1. Confirm the working directory:
+
+   ```powershell
+   pwd
+   ```
+
+2. Read `harness/progress.md` for the latest verified state and best next step.
+3. Read `harness/features.json` and select the highest-priority unfinished
+   feature, unless the user explicitly asks for a different task.
+4. Review recent history:
+
+   ```powershell
+   git log --oneline -5
+   ```
+
+5. Initialize local state:
 
    ```powershell
    .\harness\harness.ps1 init
    ```
 
-5. Seed/check tools when routing or proof policy matters:
+   On POSIX:
+
+   ```bash
+   bash harness/harness.sh init
+   ```
+
+6. Run the necessary smoke or end-to-end verification before starting new work:
+
+   ```powershell
+   .\harness\harness.ps1 check --include-active --strict-active
+   ```
+
+   If the baseline verification fails, fix that first. Do not stack new feature
+   work on top of a broken starting state.
+
+7. Seed/check tools when routing or proof policy matters:
 
    ```powershell
    .\harness\harness.ps1 tool seed
    ```
 
-6. Route non-trivial work before implementing:
+8. Route non-trivial work before implementing:
 
    ```powershell
    .\harness\harness.ps1 route --json --summary "<task>" --work-type <type> --scope <scope> --risk <risk> --persist
    ```
 
-7. Work on one active feature at a time unless the user explicitly asks for
+9. Work on one active feature at a time unless the user explicitly asks for
    planning only.
 
 ## Standard Commands
@@ -105,6 +152,12 @@ produce weak proof, but high-risk work must not be completed with weak proof.
 
 ## Completion Rules
 
+- A feature is not complete just because code was added.
+- Target behavior must be implemented.
+- Required verification must actually run.
+- Evidence must be recorded in `harness/features.json`, `harness/progress.md`,
+  or SQLite evidence state.
+- The repository must still restart from the standard startup path.
 - Do not claim completion without verification evidence.
 - Do not weaken tests to make work appear complete.
 - Keep changes inside the selected request scope.
@@ -116,6 +169,23 @@ produce weak proof, but high-risk work must not be completed with weak proof.
   explained as residual risk.
 - Update `harness/progress.md` before ending significant change work.
 - Keep `harness/features.json` truthful.
+
+## End Of Session
+
+Before ending a significant session:
+
+1. Update `harness/progress.md`.
+2. Update `harness/features.json` when feature status or evidence changed.
+3. Record unresolved risks or blockers.
+4. Run the appropriate verification path, usually:
+
+   ```powershell
+   .\harness\harness.ps1 check --include-active --strict-active
+   ```
+
+5. Commit with a descriptive message when the work is in a safe state.
+6. Leave the repo clean enough that the next session can run the startup path
+   immediately.
 
 ## Design And Craft Guidance
 

@@ -131,14 +131,15 @@ python -m unittest discover -s tests -p "test_*.py"
 Then read:
 
 1. `AGENTS.md`
-2. `harness/progress.md`
-3. `harness/features.json`
-4. `docs/INTAKE.md`
-5. `docs/RUNNER.md` when executing orchestrated local tasks
-6. `docs/ADAPTERS.md` when registering Claude, Codex, or local adapters
-7. `docs/CHECKS.md` before closing a version
-8. `docs/CONTRACTS.md` before changing public command output shapes
-9. The workflow doc that matches the request
+2. `docs/INDEX.md`
+3. `harness/progress.md`
+4. `harness/features.json`
+5. `docs/INTAKE.md`
+6. `docs/RUNNER.md` when executing orchestrated local tasks
+7. `docs/ADAPTERS.md` when registering Claude, Codex, or local adapters
+8. `docs/CHECKS.md` before closing a version
+9. `docs/CONTRACTS.md` before changing public command output shapes
+10. The workflow doc that matches the request
 
 ## Completion Rule
 

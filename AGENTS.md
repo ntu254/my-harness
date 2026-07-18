@@ -22,6 +22,7 @@ are:
 - `harness/init.sh` and `harness/init.ps1`: startup/bootstrap paths.
 - `harness/harness.sh` and `harness/harness.ps1`: CLI entrypoints.
 - `session-handoff.md`: optional short handoff for unusually large sessions.
+- `docs/INDEX.md`: map of durable docs and decision records.
 
 Prefer durable repository artifacts over chat-only summaries.
 

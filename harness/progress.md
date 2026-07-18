@@ -479,3 +479,28 @@ readiness before provider adapters.
   - Contract tests cover core controller paths, not every CLI command.
   - Provider adapter conformance, project-pack adoption, and real agent-output benchmarks remain deferred.
 - Best next step: add project-pack/adoption workflow or schema validation before declaring v1.0 stable.
+
+### Session 013
+
+- Date: 2026-07-19
+- Goal: Convert cross-repo analysis into current durable guidance and add documentation inheritance.
+- Completed:
+  - Rewrote `ANALYSIS_CROSS_REPO_IDEAS.md` to remove encoding damage and align with the current v0.10 baseline.
+  - Added `docs/INDEX.md` as the durable documentation map.
+  - Added `docs/decisions/ADR-001-state-store.md` for the SQLite plus durable artifact decision.
+  - Linked the new docs from `README.md`, `AGENTS.md`, and `harness.yaml`.
+  - Added the new docs to `harness check` required files.
+  - Updated `harness/features.json` with `MH-014`.
+- Verification executed:
+  - `python -m json.tool harness\features.json`
+  - `.\harness\harness.ps1 check --include-active --strict-active`
+  - `git diff --check`
+- Evidence recorded:
+  - `ANALYSIS_CROSS_REPO_IDEAS.md`
+  - `docs/INDEX.md`
+  - `docs/decisions/ADR-001-state-store.md`
+  - `harness/features.json`
+- Known risks:
+  - Project-pack adoption and executable ADR/constitution checks remain future work.
+  - Cross-repo ideas are curated manually; no automated repo mining exists.
+- Best next step: run final check, then choose between project-pack/adoption workflow and schema validation.

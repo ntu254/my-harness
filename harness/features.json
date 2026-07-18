@@ -321,6 +321,28 @@
         "2026-07-19: README.md and harness.yaml updated for v0.10"
       ],
       "notes": "v0.10 hardens v1.0 readiness without introducing real provider adapters or multi-agent orchestration."
+    },
+    {
+      "id": "MH-014",
+      "priority": 14,
+      "area": "readiness",
+      "title": "Curate cross-repo insights and documentation inheritance",
+      "user_visible_behavior": "A new session can find the documentation map, understand why SQLite and durable artifacts are used, and see which cross-repo ideas are absorbed or still pending.",
+      "status": "passing",
+      "verification": [
+        "Replace stale cross-repo analysis with a current v0.10-aware artifact",
+        "Add docs index for startup and navigation",
+        "Add first ADR for SQLite and durable repository artifacts",
+        "Run harness check and confirm the new docs are required files"
+      ],
+      "evidence": [
+        "2026-07-19: ANALYSIS_CROSS_REPO_IDEAS.md rewritten as clean v0.10-aware backlog",
+        "2026-07-19: docs/INDEX.md added",
+        "2026-07-19: docs/decisions/ADR-001-state-store.md added",
+        "2026-07-19: README.md, AGENTS.md, harness.yaml, and check required files updated",
+        "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active passed"
+      ],
+      "notes": "This is a documentation and continuity hardening slice. It does not add project-pack adoption, schema validation, or provider conformance yet."
     }
   ]
 }

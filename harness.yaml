@@ -21,6 +21,7 @@ cli:
   runtime_prompts: harness/prompts/
   prompt_templates: templates/prompts/
 docs:
+  index: docs/INDEX.md
   intake: docs/INTAKE.md
   workflows: docs/WORKFLOWS.md
   verification: docs/VERIFICATION.md
@@ -30,3 +31,5 @@ docs:
   adapters: docs/ADAPTERS.md
   checks: docs/CHECKS.md
   contracts: docs/CONTRACTS.md
+  decisions: docs/decisions/
+  cross_repo_ideas: ANALYSIS_CROSS_REPO_IDEAS.md

@@ -32,10 +32,14 @@ This file is local runtime state and is ignored by git.
 
 ```bash
 harness init
+harness check
 harness intake add
 harness story add
 harness story update
 harness evidence add
+harness adapter register
+harness adapter list
+harness adapter run
 harness trace add
 harness run once
 harness query active
@@ -44,12 +48,19 @@ harness query stories
 harness query evidence
 harness query traces
 harness query runs
+harness query adapters
 ```
 
 Every command accepts `--json` at the top level:
 
 ```powershell
 .\harness\harness.ps1 --json query active
+```
+
+Run the standard checks:
+
+```powershell
+.\harness\harness.ps1 check --include-active --strict-active
 ```
 
 ## Example
@@ -92,6 +103,24 @@ Runner example:
   --risk low `
   --uncertainty low `
   --reversibility easy
+```
+
+Adapter example:
+
+```powershell
+.\harness\harness.ps1 adapter register `
+  --id mock-python `
+  --provider mock `
+  --command-template "python --version" `
+  --availability present `
+  --trust verified_local
+
+.\harness\harness.ps1 adapter run `
+  --adapter mock-python `
+  --id MH-007 `
+  --summary "Validate adapter contract" `
+  --prompt "Implement the requested task" `
+  --verify-command "python -m py_compile cli/harness.py"
 ```
 
 ## State Transition Safety

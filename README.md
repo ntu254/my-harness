@@ -40,6 +40,13 @@ SQLite, or multi-agent automation.
 - Guarded execution for `high_risk` and `approval_required` lanes.
 - Runtime logs under ignored local state at `harness/runs/`.
 
+## What v0.4 Adds
+
+- Versioned schema migration loading from `state/schema/*.sql`.
+- Agent adapter registration and execution through `adapter run`.
+- A standard `harness check` command for startup, JSON, compile, whitespace, and active-queue gates.
+- Adapter/tool registry state for future Claude and Codex integrations.
+
 ## What v0.1 Deferred
 
 - No multi-agent orchestration.
@@ -57,6 +64,7 @@ On Windows:
 .\harness\init.ps1
 .\harness\harness.ps1 query active
 .\harness\harness.ps1 run once --help
+.\harness\harness.ps1 check --include-active --strict-active
 ```
 
 On macOS/Linux:
@@ -65,6 +73,7 @@ On macOS/Linux:
 bash harness/init.sh
 bash harness/harness.sh query active
 bash harness/harness.sh run once --help
+bash harness/harness.sh check --include-active --strict-active
 ```
 
 Then read:
@@ -74,7 +83,9 @@ Then read:
 3. `harness/features.json`
 4. `docs/INTAKE.md`
 5. `docs/RUNNER.md` when executing orchestrated local tasks
-6. The workflow doc that matches the request
+6. `docs/ADAPTERS.md` when registering Claude, Codex, or local adapters
+7. `docs/CHECKS.md` before closing a version
+8. The workflow doc that matches the request
 
 ## Completion Rule
 

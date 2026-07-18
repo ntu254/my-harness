@@ -129,6 +129,32 @@
         "2026-07-19: harness/v0.3-acceptance.md recorded v0.3 evidence"
       ],
       "notes": "v0.3 runner MVP validated. Provider-specific Claude/Codex adapters remain deferred."
+    },
+    {
+      "id": "MH-007",
+      "priority": 7,
+      "area": "v0.4",
+      "title": "Implement adapter contract and standard check command",
+      "user_visible_behavior": "The harness can migrate schema versions, register an agent adapter, run a task through that adapter, reject unavailable adapters, and run a single standard quality gate.",
+      "status": "passing",
+      "verification": [
+        "Run harness init and confirm schema version 2 applies",
+        "Run harness check --include-active --strict-active",
+        "Register mock adapter",
+        "Run MH-007 through mock adapter",
+        "Confirm adapter_id and prompt are recorded on agent_run",
+        "Register inactive adapter and confirm adapter run is rejected",
+        "Confirm inactive adapter command does not execute"
+      ],
+      "evidence": [
+        "2026-07-19: .\\harness\\harness.ps1 --json init applied schema version 2",
+        "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active passed",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter register --id mock-python passed",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter run --adapter mock-python --id MH-007 completed with evidence 5,6",
+        "2026-07-19: inactive-test adapter run was rejected and harness\\adapter-should-not-exist.txt was absent",
+        "2026-07-19: harness/v0.4-acceptance.md recorded v0.4 evidence"
+      ],
+      "notes": "v0.4 adapter/check/migration MVP validated. Real Claude/Codex presets remain deferred."
     }
   ]
 }

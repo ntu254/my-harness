@@ -1,6 +1,6 @@
 schema_version: 0.1
 name: my-harness
-version: 0.3.0
+version: 0.4.0
 principle: "Use the smallest process that safely proves the work."
 lanes:
   - tiny
@@ -25,3 +25,5 @@ docs:
   human_gate: docs/HUMAN_GATE.md
   cli: docs/CLI.md
   runner: docs/RUNNER.md
+  adapters: docs/ADAPTERS.md
+  checks: docs/CHECKS.md

@@ -16,7 +16,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = ROOT / "harness" / "harness.db"
-SCHEMA = ROOT / "state" / "schema" / "001-init.sql"
+SCHEMA_DIR = ROOT / "state" / "schema"
 
 
 INTENTS = {"read", "analyze", "plan", "modify", "execute"}
@@ -49,6 +49,8 @@ STORY_STATUSES = {
 EVIDENCE_RESULTS = {"pass", "fail", "skipped", "partial"}
 TRACE_OUTCOMES = {"completed", "partial", "blocked", "failed"}
 RUN_STATUSES = {"in_progress", "completed", "failed", "blocked", "needs_human"}
+ADAPTER_AVAILABILITY = {"present", "missing", "unknown", "inactive"}
+ADAPTER_TRUST = {"project_declared", "user_declared", "verified_local"}
 
 
 def db_path() -> Path:
@@ -64,11 +66,43 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
-def ensure_db() -> None:
-    if not SCHEMA.exists():
-        raise SystemExit(f"schema not found: {SCHEMA}")
+def schema_file_version(path: Path) -> int:
+    match = re.match(r"^(\d+)", path.name)
+    if not match:
+        raise SystemExit(f"schema file must start with a numeric version: {path}")
+    return int(match.group(1))
+
+
+def schema_files() -> list[Path]:
+    if not SCHEMA_DIR.exists():
+        raise SystemExit(f"schema directory not found: {SCHEMA_DIR}")
+    files = sorted(SCHEMA_DIR.glob("*.sql"), key=schema_file_version)
+    if not files:
+        raise SystemExit(f"no schema files found in: {SCHEMA_DIR}")
+    return files
+
+
+def applied_schema_versions(conn: sqlite3.Connection) -> set[int]:
+    try:
+        rows = conn.execute("SELECT version FROM schema_version").fetchall()
+    except sqlite3.OperationalError:
+        return set()
+    return {int(row["version"]) for row in rows}
+
+
+def ensure_db() -> list[int]:
+    applied_now: list[int] = []
     with connect() as conn:
-        conn.executescript(SCHEMA.read_text(encoding="utf-8"))
+        applied = applied_schema_versions(conn)
+        for path in schema_files():
+            version = schema_file_version(path)
+            if version in applied:
+                continue
+            conn.executescript(path.read_text(encoding="utf-8"))
+            conn.execute("INSERT OR IGNORE INTO schema_version (version) VALUES (?)", (version,))
+            applied.add(version)
+            applied_now.append(version)
+    return applied_now
 
 
 def require_db() -> None:
@@ -168,6 +202,13 @@ def run_command(command: str, timeout: int) -> subprocess.CompletedProcess[str]:
     )
 
 
+def render_template(template: str, values: dict[str, str]) -> str:
+    rendered = template
+    for key, value in values.items():
+        rendered = rendered.replace("{" + key + "}", value)
+    return rendered
+
+
 def write_run_log(run_id: int, story_id: str, stage: str, command: str, result: subprocess.CompletedProcess[str]) -> str:
     log_dir = ROOT / "harness" / "runs" / f"{sanitize_name(story_id)}-{run_id}"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -217,8 +258,81 @@ def insert_evidence(conn: sqlite3.Connection, values: dict[str, Any]) -> int:
 
 
 def cmd_init(args: argparse.Namespace) -> None:
-    ensure_db()
-    emit({"database": str(db_path()), "status": "initialized"}, args.json)
+    applied = ensure_db()
+    emit({"database": str(db_path()), "status": "initialized", "applied_schema_versions": applied}, args.json)
+
+
+def check_required_files() -> list[dict[str, Any]]:
+    required = [
+        "AGENTS.md",
+        "README.md",
+        "harness.yaml",
+        "harness/features.json",
+        "harness/progress.md",
+        "harness/init.ps1",
+        "cli/harness.py",
+        "state/schema/001-init.sql",
+        "state/schema/002-adapters.sql",
+    ]
+    return [
+        {
+            "name": f"file:{path}",
+            "status": "pass" if (ROOT / path).exists() else "fail",
+            "detail": path,
+        }
+        for path in required
+    ]
+
+
+def check_command(name: str, command: str, timeout: int = 60) -> dict[str, Any]:
+    try:
+        result = run_command(command, timeout)
+        return {
+            "name": name,
+            "status": "pass" if result.returncode == 0 else "fail",
+            "detail": command,
+            "exit_code": result.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        return {"name": name, "status": "fail", "detail": f"timeout: {command}", "exit_code": None}
+
+
+def cmd_check(args: argparse.Namespace) -> None:
+    applied = ensure_db()
+    checks = check_required_files()
+    checks.extend(
+        [
+            check_command("features.json parses", "python -m json.tool harness/features.json", args.timeout),
+            check_command("cli compiles", "python -m py_compile cli/harness.py", args.timeout),
+            check_command("git diff whitespace", "git diff --check", args.timeout),
+        ]
+    )
+    if args.include_active:
+        with connect() as conn:
+            active = conn.execute(
+                """
+                SELECT COUNT(*) AS count
+                FROM story
+                WHERE status IN ('planned','in_progress','verifying','blocked','needs_human')
+                """
+            ).fetchone()["count"]
+        checks.append(
+            {
+                "name": "active queue",
+                "status": "pass" if active == 0 or not args.strict_active else "fail",
+                "detail": f"{active} active stories",
+            }
+        )
+    passed = all(item["status"] == "pass" for item in checks)
+    payload = {
+        "status": "pass" if passed else "fail",
+        "database": str(db_path()),
+        "applied_schema_versions": applied,
+        "checks": checks,
+    }
+    emit(payload, args.json)
+    if not passed:
+        raise SystemExit(1)
 
 
 def cmd_intake_add(args: argparse.Namespace) -> None:
@@ -325,6 +439,94 @@ def cmd_evidence_add(args: argparse.Namespace) -> None:
     emit(values, args.json)
 
 
+def cmd_adapter_register(args: argparse.Namespace) -> None:
+    ensure_db()
+    values = {
+        "id": args.id,
+        "provider": args.provider,
+        "command_template": args.command_template,
+        "availability": validate_choice(args.availability, ADAPTER_AVAILABILITY, "availability"),
+        "trust_level": validate_choice(args.trust, ADAPTER_TRUST, "trust"),
+        "notes": args.notes,
+    }
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO agent_adapter
+              (id, provider, command_template, availability, trust_level, notes)
+            VALUES
+              (:id, :provider, :command_template, :availability, :trust_level, :notes)
+            ON CONFLICT(id) DO UPDATE SET
+              provider = excluded.provider,
+              command_template = excluded.command_template,
+              availability = excluded.availability,
+              trust_level = excluded.trust_level,
+              notes = excluded.notes
+            """,
+            values,
+        )
+        conn.execute(
+            """
+            INSERT INTO tool (id, capability, command, availability, trust_level, notes)
+            VALUES (:id, 'agent_adapter', :command_template, :availability, :trust_level, :notes)
+            ON CONFLICT(id) DO UPDATE SET
+              capability = excluded.capability,
+              command = excluded.command,
+              availability = excluded.availability,
+              trust_level = excluded.trust_level,
+              notes = excluded.notes
+            """,
+            values,
+        )
+    emit(values, args.json)
+
+
+def cmd_adapter_list(args: argparse.Namespace) -> None:
+    ensure_db()
+    query_table("agent_adapter", args)
+
+
+def cmd_adapter_run(args: argparse.Namespace) -> None:
+    ensure_db()
+    with connect() as conn:
+        adapter = conn.execute("SELECT * FROM agent_adapter WHERE id = ?", (args.adapter,)).fetchone()
+    if adapter is None:
+        raise SystemExit(f"adapter not found: {args.adapter}")
+    if adapter["availability"] in {"missing", "inactive"} and not args.allow_unavailable:
+        raise SystemExit(f"adapter is {adapter['availability']}: {args.adapter}")
+    agent_command = render_template(
+        adapter["command_template"],
+        {
+            "prompt": args.prompt,
+            "story_id": args.id,
+            "summary": args.summary,
+            "adapter": args.adapter,
+        },
+    )
+    run_args = argparse.Namespace(
+        json=args.json,
+        id=args.id,
+        summary=args.summary,
+        agent_command=agent_command,
+        verify_command=args.verify_command,
+        intent=args.intent,
+        work_type=args.work_type,
+        scope=args.scope,
+        uncertainty=args.uncertainty,
+        reversibility=args.reversibility,
+        risk=args.risk,
+        lane=args.lane,
+        confidence=args.confidence,
+        timeout=args.timeout,
+        allow_high_risk=args.allow_high_risk,
+        changed=args.changed,
+        notes=args.notes or f"adapter={args.adapter}",
+        adapter=args.adapter,
+        prompt=args.prompt,
+    )
+    cmd_run_once(run_args)
+
+
 def cmd_run_once(args: argparse.Namespace) -> None:
     ensure_db()
     work_type = validate_choice(args.work_type, WORK_TYPES, "work-type")
@@ -368,11 +570,22 @@ def cmd_run_once(args: argparse.Namespace) -> None:
         run_id = conn.execute(
             """
             INSERT INTO agent_run
-              (intake_id, story_id, lane, status, agent_command, verify_command, timeout_seconds, notes)
+              (intake_id, story_id, lane, status, agent_command, verify_command,
+               timeout_seconds, adapter_id, prompt, notes)
             VALUES
-              (?, ?, ?, 'in_progress', ?, ?, ?, ?)
+              (?, ?, ?, 'in_progress', ?, ?, ?, ?, ?, ?)
             """,
-            (intake_id, args.id, lane, args.agent_command, args.verify_command, args.timeout, args.notes),
+            (
+                intake_id,
+                args.id,
+                lane,
+                args.agent_command,
+                args.verify_command,
+                args.timeout,
+                getattr(args, "adapter", None),
+                getattr(args, "prompt", None),
+                args.notes,
+            ),
         ).lastrowid
 
     if lane in {"high_risk", "approval_required"} and not args.allow_high_risk:
@@ -590,6 +803,12 @@ def build_parser() -> argparse.ArgumentParser:
     init = sub.add_parser("init", help="initialize SQLite state")
     init.set_defaults(func=cmd_init)
 
+    check = sub.add_parser("check", help="run standard harness checks")
+    check.add_argument("--timeout", type=int, default=60)
+    check.add_argument("--include-active", action="store_true")
+    check.add_argument("--strict-active", action="store_true")
+    check.set_defaults(func=cmd_check)
+
     intake = sub.add_parser("intake", help="intake commands")
     intake_sub = intake.add_subparsers(dest="intake_command", required=True)
     intake_add = intake_sub.add_parser("add", help="record intake")
@@ -638,6 +857,40 @@ def build_parser() -> argparse.ArgumentParser:
     evidence_add.add_argument("--trust", default="tool_generated")
     evidence_add.set_defaults(func=cmd_evidence_add)
 
+    adapter = sub.add_parser("adapter", help="agent adapter commands")
+    adapter_sub = adapter.add_subparsers(dest="adapter_command", required=True)
+    adapter_register = adapter_sub.add_parser("register", help="register or update an agent adapter")
+    adapter_register.add_argument("--id", required=True)
+    adapter_register.add_argument("--provider", required=True)
+    adapter_register.add_argument("--command-template", required=True)
+    adapter_register.add_argument("--availability", default="unknown")
+    adapter_register.add_argument("--trust", default="project_declared")
+    adapter_register.add_argument("--notes")
+    adapter_register.set_defaults(func=cmd_adapter_register)
+    adapter_list = adapter_sub.add_parser("list", help="list registered adapters")
+    adapter_list.add_argument("--limit", type=int, default=20)
+    adapter_list.set_defaults(func=cmd_adapter_list)
+    adapter_run = adapter_sub.add_parser("run", help="run a task through a registered adapter")
+    adapter_run.add_argument("--adapter", required=True)
+    adapter_run.add_argument("--id", required=True)
+    adapter_run.add_argument("--summary", required=True)
+    adapter_run.add_argument("--prompt", required=True)
+    adapter_run.add_argument("--verify-command", required=True)
+    adapter_run.add_argument("--intent", default="modify")
+    adapter_run.add_argument("--work-type", default="feature")
+    adapter_run.add_argument("--scope", default="module")
+    adapter_run.add_argument("--uncertainty", default="medium")
+    adapter_run.add_argument("--reversibility", default="easy")
+    adapter_run.add_argument("--risk", default="medium")
+    adapter_run.add_argument("--lane")
+    adapter_run.add_argument("--confidence", type=float, default=1.0)
+    adapter_run.add_argument("--timeout", type=int, default=1800)
+    adapter_run.add_argument("--allow-high-risk", action="store_true")
+    adapter_run.add_argument("--allow-unavailable", action="store_true")
+    adapter_run.add_argument("--changed")
+    adapter_run.add_argument("--notes")
+    adapter_run.set_defaults(func=cmd_adapter_run)
+
     run = sub.add_parser("run", help="runner commands")
     run_sub = run.add_subparsers(dest="run_command", required=True)
     run_once = run_sub.add_parser("once", help="run one orchestrated task")
@@ -682,6 +935,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("traces", "trace"),
         ("tools", "tool"),
         ("runs", "agent_run"),
+        ("adapters", "agent_adapter"),
     ]:
         q = query_sub.add_parser(name, help=f"query {name}")
         q.add_argument("--limit", type=int, default=20)

@@ -8,13 +8,13 @@
   - POSIX: `bash harness/init.sh`
 - Standard verification path: run the startup path and any workflow-specific
   evidence listed in `harness/features.json`.
-- Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, and `MH-006` are passing.
+- Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, `MH-006`, and `MH-007` are passing.
 - Current blockers: none recorded.
 
 ## Best Next Step
 
-Plan v0.4 provider adapters and migration discipline on top of the validated
-single-task runner.
+Plan v0.5 provider presets, prompt-file rendering, and adapter capability
+discovery on top of the validated adapter contract.
 
 ## Session Log
 
@@ -149,3 +149,51 @@ single-task runner.
   - Schema migration is still simple `CREATE TABLE IF NOT EXISTS` evolution.
 - Best next step: design v0.4 adapter contract, migration runner, and automated
   check command.
+
+### Session 005
+
+- Date: 2026-07-19
+- Goal: Implement v0.4 adapter contract, migration discipline, and check command.
+- Completed:
+  - Added versioned schema loading from `state/schema/*.sql`.
+  - Added `state/schema/002-adapters.sql`.
+  - Added `agent_adapter` registry state.
+  - Added `adapter register`, `adapter list`, and `adapter run`.
+  - Added `harness check`.
+  - Added adapter/check docs and v0.4 plan.
+- Verification executed:
+  - `.\harness\harness.ps1 --json init`
+  - `.\harness\harness.ps1 check --include-active --strict-active`
+  - `python -m py_compile cli\harness.py`
+  - `.\harness\harness.ps1 adapter run --help`
+  - `.\harness\harness.ps1 --json adapter register --id mock-python ...`
+  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-007 ...`
+  - `.\harness\harness.ps1 --json query adapters`
+  - `.\harness\harness.ps1 --json query runs`
+  - inactive adapter rejection smoke
+  - `git diff --check`
+- Evidence recorded:
+  - `harness/v0.4-plan.md`
+  - `harness/v0.4-acceptance.md`
+  - `harness/features.json`
+  - local runtime DB: `harness/harness.db` (ignored by git)
+  - local runtime logs: `harness/runs/` (ignored by git)
+- Commit: recorded in the latest `origin/main` history after push.
+- Updated files or artifacts:
+  - `README.md`
+  - `docs/ADAPTERS.md`
+  - `docs/CHECKS.md`
+  - `docs/CLI.md`
+  - `harness.yaml`
+  - `harness/features.json`
+  - `harness/progress.md`
+  - `harness/v0.4-plan.md`
+  - `harness/v0.4-acceptance.md`
+  - `cli/harness.py`
+  - `state/schema/002-adapters.sql`
+- Known risks:
+  - POSIX wrapper not executed in a POSIX shell in this session.
+  - Real Claude/Codex adapter presets are not included yet.
+  - Schema migration has forward-only apply behavior and no rollback.
+- Best next step: design v0.5 provider presets, prompt-file rendering, adapter
+  capability discovery, and a safer command-template quoting policy.

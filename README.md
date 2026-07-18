@@ -101,6 +101,11 @@ proven.
   to the current project directory instead of the package cache.
 - `docs/RELEASE_INSTALL.md` with tag, GitHub, and npm release instructions.
 
+## What v0.10.2 Adds
+
+- Quieter install checkout for annotated Git tags after `v0.10.1` verified that
+  `npx github:ntu254/my-harness#v0.10.1` can install `v0.2.0`.
+
 ## Still Deferred
 
 - No multi-agent orchestration.

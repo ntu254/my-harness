@@ -159,17 +159,13 @@ function installVersion(args) {
 
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "my-harness-install-"));
   try {
-    const clone = run("git", [
-      "clone",
-      "--depth",
-      "1",
-      "--branch",
-      options.version,
-      options.repo,
-      temp
-    ]);
+    const clone = run("git", ["clone", options.repo, temp]);
     if (clone.status !== 0) {
       process.exit(clone.status === null ? 1 : clone.status);
+    }
+    const checkout = run("git", ["checkout", "--quiet", "--detach", options.version], { cwd: temp });
+    if (checkout.status !== 0) {
+      process.exit(checkout.status === null ? 1 : checkout.status);
     }
     fs.mkdirSync(options.target, { recursive: true });
     copyDirContents(temp, options.target);

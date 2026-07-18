@@ -366,7 +366,10 @@
         "2026-07-19: packaged launcher init created harness\\harness.db under MY_HARNESS_WORKSPACE temp path",
         "2026-07-19: npm pack --dry-run produced a clean package without DB, runtime logs, prompts, or pycache",
         "2026-07-19: npm run check passed",
-        "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active passed"
+        "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active passed",
+        "2026-07-19: npx --yes github:ntu254/my-harness#v0.10.1 --package-version returned 0.10.1",
+        "2026-07-19: npx --yes github:ntu254/my-harness#v0.10.1 install --version v0.2.0 installed the v0.2 acceptance file",
+        "2026-07-19: v0.10.2 updates the installer checkout path to avoid annotated-tag checkout noise"
       ],
       "notes": "This is a release/install experience patch. It is not the v0.11 authority/protocol hardening slice and it is not the v0.12 project-pack adoption command."
     }

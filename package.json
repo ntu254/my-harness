@@ -1,6 +1,6 @@
 {
   "name": "@ntu254/my-harness",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "Lightweight control layer for AI coding agents.",
   "bin": {
     "my-harness": "bin/my-harness.js",

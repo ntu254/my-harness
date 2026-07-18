@@ -527,6 +527,8 @@ readiness before provider adapters.
   - `npm pack --dry-run`
   - `npm run check`
   - `.\harness\harness.ps1 check --include-active --strict-active`
+  - `npx --yes github:ntu254/my-harness#v0.10.1 --package-version`
+  - `npx --yes github:ntu254/my-harness#v0.10.1 install --version v0.2.0 --target <tmp>`
 - Evidence recorded:
   - `package.json`
   - `bin/my-harness.js`
@@ -539,7 +541,7 @@ readiness before provider adapters.
 - Known risks:
   - npm publishing still requires valid npm credentials and is not performed by
     local code changes alone.
-  - GitHub tags/releases must be pushed separately after the working tree is in
-    a safe committed state.
+  - GitHub releases still need release notes if the repository should expose a
+    polished Releases page.
 - Best next step: verify the launcher, backfill version tags, commit the release
   install slice, then push tags/code if credentials allow.

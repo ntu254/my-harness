@@ -1,0 +1,21 @@
+# Local runtime state
+harness.db
+*.db
+*.sqlite
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Dependency folders if future versions add tooling
+node_modules/
+target/
+dist/
+build/

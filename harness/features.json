@@ -1,0 +1,75 @@
+{
+  "project": "my-harness",
+  "last_updated": "2026-07-19",
+  "rules": {
+    "single_active_feature": true,
+    "passing_requires_evidence": true,
+    "do_not_skip_verification": true
+  },
+  "features": [
+    {
+      "id": "MH-001",
+      "priority": 1,
+      "area": "v0.1",
+      "title": "Create v0.1 continuity package",
+      "user_visible_behavior": "A new session can understand startup, state, workflow, verification, and handoff rules from repository artifacts.",
+      "status": "passing",
+      "verification": [
+        "Run harness/init.ps1",
+        "Confirm required files exist",
+        "Confirm features.json parses"
+      ],
+      "evidence": [
+        "2026-07-19: .\\harness\\init.ps1 passed",
+        "2026-07-19: python -m json.tool harness\\features.json passed",
+        "2026-07-19: rg --files confirmed v0.1 scaffold files"
+      ],
+      "notes": "Initial scaffold created and baseline validation passed."
+    },
+    {
+      "id": "MH-002",
+      "priority": 2,
+      "area": "workflow",
+      "title": "Validate tiny-change workflow",
+      "user_visible_behavior": "A tiny documentation edit completes without heavy process.",
+      "status": "not_started",
+      "verification": [
+        "Change one README sentence",
+        "Run one focused verification step",
+        "Record evidence in progress.md"
+      ],
+      "evidence": [],
+      "notes": ""
+    },
+    {
+      "id": "MH-003",
+      "priority": 3,
+      "area": "workflow",
+      "title": "Validate bugfix workflow",
+      "user_visible_behavior": "A small simulated bug is reproduced, fixed, and verified.",
+      "status": "not_started",
+      "verification": [
+        "Document failing condition",
+        "Fix the issue",
+        "Record passing evidence"
+      ],
+      "evidence": [],
+      "notes": ""
+    },
+    {
+      "id": "MH-004",
+      "priority": 4,
+      "area": "workflow",
+      "title": "Validate high-risk planning workflow",
+      "user_visible_behavior": "A dangerous or external request escalates to approval-required without execution.",
+      "status": "not_started",
+      "verification": [
+        "Simulate release, deploy, delete, or production migration request",
+        "Confirm approval request is produced",
+        "Confirm no dangerous action runs"
+      ],
+      "evidence": [],
+      "notes": ""
+    }
+  ]
+}

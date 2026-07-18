@@ -1,0 +1,20 @@
+schema_version: 0.1
+name: my-harness
+version: 0.1.0
+principle: "Use the smallest process that safely proves the work."
+lanes:
+  - tiny
+  - normal
+  - high_risk
+  - approval_required
+state:
+  features: harness/features.json
+  progress: harness/progress.md
+startup:
+  windows: harness/init.ps1
+  posix: harness/init.sh
+docs:
+  intake: docs/INTAKE.md
+  workflows: docs/WORKFLOWS.md
+  verification: docs/VERIFICATION.md
+  human_gate: docs/HUMAN_GATE.md

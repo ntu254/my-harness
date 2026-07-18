@@ -8,13 +8,13 @@
   - POSIX: `bash harness/init.sh`
 - Standard verification path: run the startup path and any workflow-specific
   evidence listed in `harness/features.json`.
-- Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, `MH-006`, `MH-007`, `MH-008`, and `MH-009` are passing.
+- Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, `MH-006`, `MH-007`, `MH-008`, `MH-009`, `MH-010`, and `MH-011` are passing.
 - Current blockers: none recorded.
 
 ## Best Next Step
 
-Implement v0.8 capability validation and shell-free verification mode, then real
-provider smoke gates (Claude/Codex adapters) once capabilities are enforced.
+Review v0.8 alignment and then design v0.9 agent selection/provider smoke gates
+once route capability gaps are acceptable.
 
 ## Session Log
 
@@ -335,3 +335,50 @@ provider smoke gates (Claude/Codex adapters) once capabilities are enforced.
   - Capability validation/enforcement not yet implemented.
 - Best next step: implement v0.8 capability validation and shell-free verification mode
   enforcement before real provider smoke gates.
+
+### Session 009
+
+- Date: 2026-07-19
+- Goal: Implement v0.8 alignment release to restore missing plan layers.
+- Completed:
+  - Added deterministic `route` command for workflow, skill, capability, proof policy, and human gate decisions.
+  - Added `harness/skills.json` skill registry.
+  - Added `tool seed` and `tool register` for capability registry management.
+  - Added human approval request/resolve commands.
+  - Added `harness/benchmarks.json` and `bench run` route benchmark command.
+  - Added schema version 6 for route decisions, human gates, and benchmark runs.
+  - Added routing and benchmark docs.
+- Verification executed:
+  - `python -m py_compile cli\harness.py`
+  - `python -m json.tool harness\skills.json`
+  - `python -m json.tool harness\benchmarks.json`
+  - `.\harness\harness.ps1 init`
+  - `.\harness\harness.ps1 tool seed`
+  - `.\harness\harness.ps1 route --json --summary "Fix parser bug" --work-type bugfix --scope module --risk medium`
+  - `.\harness\harness.ps1 route --json --summary "Update dashboard component" --work-type feature --scope module --risk medium --tag ui`
+  - `.\harness\harness.ps1 approval request ...`
+  - `.\harness\harness.ps1 approval resolve ...`
+  - `.\harness\harness.ps1 bench run --json --fail-on-regression`
+  - `.\harness\harness.ps1 check --include-active`
+  - `git diff --check`
+- Evidence recorded:
+  - `harness/v0.8-plan.md`
+  - `harness/v0.8-acceptance.md`
+  - `harness/features.json` updated with `MH-011`
+  - local runtime DB: `harness/harness.db` (ignored by git)
+- Updated files or artifacts:
+  - `cli/harness.py`
+  - `state/schema/006-routing-alignment.sql`
+  - `harness/skills.json`
+  - `harness/benchmarks.json`
+  - `harness/v0.8-plan.md`
+  - `harness/v0.8-acceptance.md`
+  - `docs/ROUTING.md`
+  - `docs/BENCHMARKS.md`
+  - `harness/features.json`
+  - `harness/progress.md`
+- Known risks:
+  - `pytest` is not installed locally, so `test-runner` remains a missing capability until a project-specific test command is registered.
+  - UI/browser proof capabilities are seeded as unknown until a concrete browser/a11y tool is connected.
+  - Real Claude/Codex provider smoke remains deferred.
+- Best next step: review v0.8 scope, then plan v0.9 agent/provider selection and stronger capability enforcement.

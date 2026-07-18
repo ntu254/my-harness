@@ -6,6 +6,9 @@ The CLI is intentionally narrow. It records intake, stories, evidence, traces,
 active work, and single-task runner attempts. Guarded high-risk runs are
 recorded but not executed without explicit approval.
 
+v0.8 also adds the planned controller surface: route decisions, skill/capability
+resolution, human approval records, and deterministic route benchmarks.
+
 ## Start
 
 Windows:
@@ -37,6 +40,12 @@ harness intake add
 harness story add
 harness story update
 harness evidence add
+harness route
+harness tool register
+harness tool seed
+harness approval request
+harness approval resolve
+harness bench run
 harness adapter register
 harness adapter list
 harness adapter preset
@@ -51,6 +60,9 @@ harness query evidence
 harness query traces
 harness query runs
 harness query adapters
+harness query routes
+harness query approvals
+harness query benchmarks
 ```
 
 Every command accepts `--json` at the top level:
@@ -144,6 +156,41 @@ Preset and discovery example:
 ```powershell
 .\harness\harness.ps1 adapter preset all
 .\harness\harness.ps1 adapter discover --adapter mock-python
+```
+
+Route and capability example:
+
+```powershell
+.\harness\harness.ps1 tool seed
+
+.\harness\harness.ps1 route --json `
+  --summary "Fix parser bug" `
+  --work-type bugfix `
+  --scope module `
+  --risk medium `
+  --persist
+```
+
+Human gate example:
+
+```powershell
+.\harness\harness.ps1 route --json `
+  --summary "Irreversible external migration" `
+  --intent execute `
+  --work-type migration `
+  --scope external_system `
+  --reversibility irreversible `
+  --risk critical
+
+.\harness\harness.ps1 approval request `
+  --summary "Approve irreversible external migration" `
+  --risk critical
+```
+
+Benchmark example:
+
+```powershell
+.\harness\harness.ps1 bench run --json --fail-on-regression
 ```
 
 ## State Transition Safety

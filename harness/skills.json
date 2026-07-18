@@ -1,0 +1,86 @@
+{
+  "version": "0.8",
+  "description": "Default skill registry for my-harness routing decisions.",
+  "skills": [
+    {
+      "id": "tiny-change",
+      "category": "workflow",
+      "lanes": ["tiny"],
+      "description": "Small reversible edit with minimal planning and a fast local check.",
+      "required_capabilities": ["code-search", "fast-check"],
+      "gate_policy": "auto"
+    },
+    {
+      "id": "spec-clarification",
+      "category": "analysis",
+      "lanes": ["normal", "high_risk", "approval_required"],
+      "description": "Clarify BRD/PRD/spec intent, acceptance criteria, constraints, and authority.",
+      "required_capabilities": ["spec-analysis"],
+      "gate_policy": "warn-on-gap"
+    },
+    {
+      "id": "normal-feature",
+      "category": "implementation",
+      "lanes": ["normal"],
+      "description": "Implement a normal feature through spec, code, verification, and trace.",
+      "required_capabilities": ["code-search", "test-runner"],
+      "gate_policy": "warn-on-gap"
+    },
+    {
+      "id": "systematic-debugging",
+      "category": "implementation",
+      "lanes": ["normal", "high_risk"],
+      "description": "Reproduce, inspect evidence, isolate cause, patch, and verify regression behavior.",
+      "required_capabilities": ["code-search", "diagnostic-logs", "test-runner"],
+      "gate_policy": "warn-on-gap"
+    },
+    {
+      "id": "regression-proof",
+      "category": "quality",
+      "lanes": ["normal", "high_risk"],
+      "description": "Add or run focused tests that protect the fixed behavior.",
+      "required_capabilities": ["test-runner"],
+      "gate_policy": "warn-on-gap"
+    },
+    {
+      "id": "code-quality-review",
+      "category": "quality",
+      "lanes": ["tiny", "normal", "high_risk", "approval_required"],
+      "description": "Review maintainability, coupling, scale path, error handling, and bug risk.",
+      "required_capabilities": ["static-analysis", "code-review"],
+      "gate_policy": "warn-on-gap"
+    },
+    {
+      "id": "design-quality-review",
+      "category": "quality",
+      "lanes": ["normal", "high_risk", "approval_required"],
+      "description": "Check UX, responsive behavior, accessibility, and visual proof for UI work.",
+      "required_capabilities": ["browser-check", "accessibility-check", "visual-review"],
+      "gate_policy": "warn-on-gap"
+    },
+    {
+      "id": "high-risk-plan",
+      "category": "governance",
+      "lanes": ["high_risk", "approval_required"],
+      "description": "Create impact analysis, rollout plan, rollback path, and stronger evidence gates.",
+      "required_capabilities": ["impact-analysis", "rollback-plan"],
+      "gate_policy": "block-on-gap"
+    },
+    {
+      "id": "human-gate",
+      "category": "governance",
+      "lanes": ["approval_required"],
+      "description": "Require explicit human approval before external, irreversible, critical, or authority-sensitive action.",
+      "required_capabilities": ["human-approval"],
+      "gate_policy": "block"
+    },
+    {
+      "id": "benchmark-evaluation",
+      "category": "learning",
+      "lanes": ["normal"],
+      "description": "Run fixture tasks to catch regressions in routing and policy behavior.",
+      "required_capabilities": ["benchmark-runner"],
+      "gate_policy": "warn-on-gap"
+    }
+  ]
+}

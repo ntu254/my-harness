@@ -1,0 +1,67 @@
+{
+  "suite": "v0.8-route-alignment",
+  "description": "Fixture cases for validating lane, workflow, skill, and gate decisions.",
+  "cases": [
+    {
+      "id": "BENCH-TINY-001",
+      "summary": "Rename one local variable in one file and run a quick check.",
+      "intent": "modify",
+      "work_type": "maintenance",
+      "scope": "file",
+      "uncertainty": "low",
+      "reversibility": "easy",
+      "risk": "low",
+      "expected_lane": "tiny",
+      "expected_skills": ["tiny-change", "code-quality-review"]
+    },
+    {
+      "id": "BENCH-BUGFIX-001",
+      "summary": "Fix a failing parser branch and add a regression check.",
+      "intent": "modify",
+      "work_type": "bugfix",
+      "scope": "module",
+      "uncertainty": "medium",
+      "reversibility": "easy",
+      "risk": "medium",
+      "expected_lane": "normal",
+      "expected_skills": ["systematic-debugging", "regression-proof", "code-quality-review"]
+    },
+    {
+      "id": "BENCH-SPEC-001",
+      "summary": "Design a new repository-level harness capability from unclear requirements.",
+      "intent": "plan",
+      "work_type": "harness_improvement",
+      "scope": "repository",
+      "uncertainty": "high",
+      "reversibility": "costly",
+      "risk": "high",
+      "expected_lane": "high_risk",
+      "expected_skills": ["spec-clarification", "high-risk-plan"]
+    },
+    {
+      "id": "BENCH-UI-001",
+      "summary": "Update a dashboard component and verify responsive behavior.",
+      "intent": "modify",
+      "work_type": "feature",
+      "scope": "module",
+      "uncertainty": "medium",
+      "reversibility": "easy",
+      "risk": "medium",
+      "tags": ["ui", "frontend"],
+      "expected_lane": "normal",
+      "expected_skills": ["normal-feature", "spec-clarification", "code-quality-review", "design-quality-review"]
+    },
+    {
+      "id": "BENCH-GATE-001",
+      "summary": "Deploy an irreversible production migration to an external system.",
+      "intent": "execute",
+      "work_type": "migration",
+      "scope": "external_system",
+      "uncertainty": "medium",
+      "reversibility": "irreversible",
+      "risk": "critical",
+      "expected_lane": "approval_required",
+      "expected_skills": ["high-risk-plan", "human-gate"]
+    }
+  ]
+}

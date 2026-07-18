@@ -54,6 +54,10 @@ ADAPTER_AVAILABILITY = {"present", "missing", "unknown", "inactive"}
 ADAPTER_TRUST = {"project_declared", "user_declared", "verified_local"}
 COMMAND_MODES = {"shell", "argv"}
 VERIFICATION_MODES = {"shell", "argv", "native"}
+HUMAN_GATE_STATUSES = {"pending", "approved", "rejected", "cancelled"}
+
+SKILL_REGISTRY = ROOT / "harness" / "skills.json"
+BENCHMARK_REGISTRY = ROOT / "harness" / "benchmarks.json"
 
 ADAPTER_PRESETS: dict[str, dict[str, str]] = {
     "mock-python": {
@@ -296,6 +300,217 @@ def render_argv_template(argv_json: str, values: dict[str, str]) -> list[str]:
     return [render_template(item, values) for item in raw]
 
 
+def read_json_file(path: Path, fallback: Any) -> Any:
+    if not path.exists():
+        return fallback
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"invalid JSON file {path}: {exc}") from exc
+
+
+def normalize_csv(values: list[str] | None) -> list[str]:
+    result: list[str] = []
+    for value in values or []:
+        for item in value.split(","):
+            item = item.strip()
+            if item and item not in result:
+                result.append(item)
+    return result
+
+
+def load_skills() -> list[dict[str, Any]]:
+    data = read_json_file(SKILL_REGISTRY, {"skills": []})
+    skills = data.get("skills", []) if isinstance(data, dict) else []
+    if not isinstance(skills, list):
+        raise SystemExit("harness/skills.json must contain a skills array")
+    return [item for item in skills if isinstance(item, dict) and item.get("id")]
+
+
+def skills_by_id() -> dict[str, dict[str, Any]]:
+    return {str(skill["id"]): skill for skill in load_skills()}
+
+
+def choose_workflow(lane: str, intent: str, work_type: str, tags: list[str]) -> str:
+    tag_set = set(tags)
+    if lane == "approval_required":
+        return "approval-first"
+    if lane == "high_risk":
+        return "plan-gated"
+    if "ui" in tag_set or "frontend" in tag_set or "design" in tag_set:
+        return "design-quality-slice"
+    if work_type in {"bugfix", "incident"}:
+        return "debug-regression-loop"
+    if intent in {"read", "analyze", "plan"}:
+        return "analysis-only"
+    if lane == "tiny":
+        return "tiny-change"
+    return "spec-code-verify"
+
+
+def choose_skill_ids(lane: str, intent: str, work_type: str, scope: str, tags: list[str]) -> list[str]:
+    tag_set = set(tags)
+    selected: list[str] = []
+
+    def add(skill_id: str) -> None:
+        if skill_id not in selected:
+            selected.append(skill_id)
+
+    if lane == "tiny":
+        add("tiny-change")
+    elif work_type in {"bugfix", "incident"}:
+        add("systematic-debugging")
+        add("regression-proof")
+    elif intent in {"read", "analyze", "plan"}:
+        add("spec-clarification")
+    else:
+        add("normal-feature")
+
+    if work_type in {"feature", "migration", "release", "harness_improvement"} and scope != "file":
+        add("spec-clarification")
+    if intent in {"modify", "execute"} or work_type in {"refactor", "maintenance", "harness_improvement"}:
+        add("code-quality-review")
+    if {"ui", "frontend", "design", "accessibility"} & tag_set:
+        add("design-quality-review")
+    if lane in {"high_risk", "approval_required"}:
+        add("high-risk-plan")
+    if lane == "approval_required":
+        add("human-gate")
+    return selected
+
+
+def required_capabilities_for(skill_ids: list[str], extra: list[str] | None = None) -> list[str]:
+    registry = skills_by_id()
+    required: list[str] = []
+    for skill_id in skill_ids:
+        for capability in registry.get(skill_id, {}).get("required_capabilities", []):
+            if capability not in required:
+                required.append(capability)
+    for capability in extra or []:
+        if capability not in required:
+            required.append(capability)
+    return required
+
+
+def available_tools(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT id, capability, command, availability, trust_level, notes
+        FROM tool
+        ORDER BY capability, id
+        """
+    ).fetchall()
+    tools = [row_dict(row) for row in rows]
+    adapters = conn.execute(
+        """
+        SELECT id, provider, capabilities_json, availability, trust_level
+        FROM agent_adapter
+        ORDER BY id
+        """
+    ).fetchall()
+    for row in adapters:
+        try:
+            capabilities = json.loads(row["capabilities_json"] or "[]")
+        except json.JSONDecodeError:
+            capabilities = []
+        for capability in capabilities:
+            tools.append(
+                {
+                    "id": row["id"],
+                    "capability": capability,
+                    "command": f"agent-adapter:{row['provider']}",
+                    "availability": row["availability"],
+                    "trust_level": row["trust_level"],
+                    "notes": "adapter capability",
+                }
+            )
+    return tools
+
+
+def build_route_decision(args: argparse.Namespace, persist: bool = False) -> dict[str, Any]:
+    ensure_db()
+    intent = validate_choice(args.intent, INTENTS, "intent")
+    work_type = validate_choice(args.work_type, WORK_TYPES, "work-type")
+    scope = validate_choice(args.scope, SCOPES, "scope")
+    uncertainty = validate_choice(args.uncertainty, UNCERTAINTY, "uncertainty")
+    reversibility = validate_choice(args.reversibility, REVERSIBILITY, "reversibility")
+    risk = validate_choice(args.risk, RISKS, "risk")
+    lane = args.lane or classify_lane(work_type, scope, uncertainty, reversibility, risk)
+    lane = validate_choice(lane, LANES, "lane")
+    tags = normalize_csv(getattr(args, "tag", None))
+    explicit_capabilities = normalize_csv(getattr(args, "requires", None))
+    skill_ids = choose_skill_ids(lane, intent, work_type, scope, tags)
+    required = required_capabilities_for(skill_ids, explicit_capabilities)
+    with connect() as conn:
+        tools = available_tools(conn)
+        present_capabilities = {
+            tool["capability"]
+            for tool in tools
+            if tool.get("availability") == "present"
+        }
+        missing = [capability for capability in required if capability not in present_capabilities]
+        available = [
+            tool for tool in tools if tool.get("capability") in required and tool.get("availability") == "present"
+        ]
+        candidates = [
+            tool
+            for tool in tools
+            if tool.get("capability") in required and tool.get("availability") in {"unknown", "missing"}
+        ]
+        decision = {
+            "summary": args.summary,
+            "lane": lane,
+            "workflow": choose_workflow(lane, intent, work_type, tags),
+            "skills": skill_ids,
+            "required_capabilities": required,
+            "available_tools": available,
+            "candidate_tools": candidates,
+            "missing_capabilities": missing,
+            "proof_policy": "block" if lane == "approval_required" else ("warn" if missing else "pass"),
+            "human_gate_required": lane == "approval_required",
+            "rationale": {
+                "intent": intent,
+                "work_type": work_type,
+                "scope": scope,
+                "uncertainty": uncertainty,
+                "reversibility": reversibility,
+                "risk": risk,
+                "tags": tags,
+            },
+        }
+        if persist:
+            cur = conn.execute(
+                """
+                INSERT INTO route_decision
+                  (summary, intent, work_type, scope, uncertainty, reversibility, risk, lane,
+                   workflow, skills_json, required_capabilities_json, available_tools_json,
+                   missing_capabilities_json, proof_policy, human_gate_required, rationale_json)
+                VALUES
+                  (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    args.summary,
+                    intent,
+                    work_type,
+                    scope,
+                    uncertainty,
+                    reversibility,
+                    risk,
+                    lane,
+                    decision["workflow"],
+                    json.dumps(skill_ids, ensure_ascii=False),
+                    json.dumps(required, ensure_ascii=False),
+                    json.dumps(available, ensure_ascii=False),
+                    json.dumps(missing, ensure_ascii=False),
+                    decision["proof_policy"],
+                    int(decision["human_gate_required"]),
+                    json.dumps(decision["rationale"], ensure_ascii=False),
+                ),
+            )
+            decision["route_id"] = cur.lastrowid
+    return decision
+
+
 def prompt_dir() -> Path:
     path = ROOT / "harness" / "prompts"
     path.mkdir(parents=True, exist_ok=True)
@@ -430,6 +645,10 @@ def check_required_files() -> list[dict[str, Any]]:
         "state/schema/002-adapters.sql",
         "state/schema/003-adapter-discovery.sql",
         "state/schema/004-argv-and-prompt-templates.sql",
+        "state/schema/005-adapter-capabilities.sql",
+        "state/schema/006-routing-alignment.sql",
+        "harness/skills.json",
+        "harness/benchmarks.json",
         "templates/prompts/adapter-smoke.md",
     ]
     return [
@@ -867,6 +1086,210 @@ def cmd_adapter_capability(args: argparse.Namespace) -> None:
     emit(results, args.json)
 
 
+def register_tool_values(values: dict[str, Any]) -> None:
+    values["availability"] = validate_choice(values["availability"], ADAPTER_AVAILABILITY, "availability")
+    values["trust_level"] = validate_choice(values["trust_level"], ADAPTER_TRUST, "trust")
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO tool (id, capability, command, availability, trust_level, notes)
+            VALUES (:id, :capability, :command, :availability, :trust_level, :notes)
+            ON CONFLICT(id) DO UPDATE SET
+              capability = excluded.capability,
+              command = excluded.command,
+              availability = excluded.availability,
+              trust_level = excluded.trust_level,
+              notes = excluded.notes
+            """,
+            values,
+        )
+
+
+def cmd_tool_register(args: argparse.Namespace) -> None:
+    ensure_db()
+    values = {
+        "id": args.id,
+        "capability": args.capability,
+        "command": args.command,
+        "availability": args.availability,
+        "trust_level": args.trust,
+        "notes": args.notes,
+    }
+    register_tool_values(values)
+    emit(values, args.json)
+
+
+def cmd_tool_seed(args: argparse.Namespace) -> None:
+    ensure_db()
+    executable_tools = [
+        ("rg", "code-search", "rg", "rg --files", "Fast repository search."),
+        ("python", "fast-check", "python", "python -m py_compile cli/harness.py", "Local Python smoke checks."),
+        ("git", "change-trace", "git", "git status --short", "Local change and history inspection."),
+        ("pytest", "test-runner", "pytest", "pytest", "Python test runner when available."),
+    ]
+    seeded: list[dict[str, Any]] = []
+    for tool_id, capability, executable, command, notes in executable_tools:
+        availability, detail = discover_executable(executable)
+        values = {
+            "id": tool_id,
+            "capability": capability,
+            "command": command,
+            "availability": availability,
+            "trust_level": "verified_local" if availability == "present" else "project_declared",
+            "notes": f"{notes} Discovery: {detail}",
+        }
+        register_tool_values(values)
+        seeded.append(values)
+
+    manual_tools = [
+        ("manual-spec-review", "spec-analysis", "manual:spec-review", "present", "Spec and requirement review checklist."),
+        ("manual-code-review", "code-review", "manual:code-review", "present", "Senior code review checklist."),
+        ("manual-impact-analysis", "impact-analysis", "manual:impact-analysis", "present", "Blast-radius and dependency analysis."),
+        ("manual-rollback-plan", "rollback-plan", "manual:rollback-plan", "present", "Rollback and recovery planning."),
+        ("manual-human-approval", "human-approval", "manual:human-approval", "present", "Explicit approval record for risky work."),
+        ("harness-bench", "benchmark-runner", "harness bench run", "present", "Local route benchmark harness."),
+        ("manual-static-analysis", "static-analysis", "manual:static-analysis", "present", "Maintainability and quality rubric."),
+        ("manual-diagnostic-logs", "diagnostic-logs", "manual:diagnostic-logs", "present", "Collect and inspect logs or repro output."),
+        ("manual-browser-check", "browser-check", "manual:browser-check", "unknown", "Browser/UI verification when a UI exists."),
+        ("manual-accessibility-check", "accessibility-check", "manual:accessibility-check", "unknown", "Accessibility review when a UI exists."),
+        ("manual-visual-review", "visual-review", "manual:visual-review", "unknown", "Visual QA evidence when a UI exists."),
+    ]
+    for tool_id, capability, command, availability, notes in manual_tools:
+        values = {
+            "id": tool_id,
+            "capability": capability,
+            "command": command,
+            "availability": availability,
+            "trust_level": "project_declared",
+            "notes": notes,
+        }
+        register_tool_values(values)
+        seeded.append(values)
+    emit(seeded, args.json)
+
+
+def cmd_route(args: argparse.Namespace) -> None:
+    decision = build_route_decision(args, persist=args.persist)
+    emit(decision, args.json)
+
+
+def cmd_approval_request(args: argparse.Namespace) -> None:
+    ensure_db()
+    values = {
+        "story_id": args.story,
+        "summary": args.summary,
+        "risk": validate_choice(args.risk, RISKS, "risk"),
+        "requested_by": args.requested_by,
+        "status": "pending",
+        "notes": args.notes,
+    }
+    with connect() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO human_gate (story_id, summary, risk, requested_by, status, notes)
+            VALUES (:story_id, :summary, :risk, :requested_by, :status, :notes)
+            """,
+            values,
+        )
+        values["id"] = cur.lastrowid
+    emit(values, args.json)
+
+
+def cmd_approval_resolve(args: argparse.Namespace) -> None:
+    ensure_db()
+    status = validate_choice(args.status, HUMAN_GATE_STATUSES - {"pending"}, "status")
+    values = {
+        "id": args.id,
+        "status": status,
+        "resolved_by": args.resolved_by,
+        "decision_notes": args.notes,
+    }
+    with connect() as conn:
+        cur = conn.execute(
+            """
+            UPDATE human_gate
+            SET status = :status,
+                resolved_by = :resolved_by,
+                decision_notes = :decision_notes,
+                resolved_at = datetime('now')
+            WHERE id = :id AND status = 'pending'
+            """,
+            values,
+        )
+        if cur.rowcount != 1:
+            raise SystemExit("approval resolve failed: pending gate not found")
+        row = conn.execute("SELECT * FROM human_gate WHERE id = ?", (args.id,)).fetchone()
+    emit(row_dict(row), args.json)
+
+
+def cmd_bench_run(args: argparse.Namespace) -> None:
+    ensure_db()
+    data = read_json_file(BENCHMARK_REGISTRY, {"cases": []})
+    cases = data.get("cases", []) if isinstance(data, dict) else []
+    if not isinstance(cases, list) or not cases:
+        raise SystemExit("harness/benchmarks.json must contain at least one case")
+    results: list[dict[str, Any]] = []
+    for case in cases:
+        if not isinstance(case, dict):
+            continue
+        ns = argparse.Namespace(
+            summary=case.get("summary", case.get("id", "benchmark case")),
+            intent=case.get("intent", "modify"),
+            work_type=case.get("work_type", "feature"),
+            scope=case.get("scope", "module"),
+            uncertainty=case.get("uncertainty", "medium"),
+            reversibility=case.get("reversibility", "easy"),
+            risk=case.get("risk", "medium"),
+            lane=case.get("lane"),
+            tag=case.get("tags", []),
+            requires=case.get("requires", []),
+        )
+        decision = build_route_decision(ns, persist=False)
+        expected_lane = case.get("expected_lane")
+        expected_skills = case.get("expected_skills", [])
+        missing_skills = [skill for skill in expected_skills if skill not in decision["skills"]]
+        passed = (expected_lane is None or decision["lane"] == expected_lane) and not missing_skills
+        results.append(
+            {
+                "id": case.get("id"),
+                "passed": passed,
+                "expected_lane": expected_lane,
+                "actual_lane": decision["lane"],
+                "expected_skills": expected_skills,
+                "actual_skills": decision["skills"],
+                "missing_expected_skills": missing_skills,
+                "missing_capabilities": decision["missing_capabilities"],
+            }
+        )
+    pass_count = sum(1 for item in results if item["passed"])
+    fail_count = len(results) - pass_count
+    payload = {
+        "suite": data.get("suite", "local-route-benchmark") if isinstance(data, dict) else "local-route-benchmark",
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "results": results,
+    }
+    with connect() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO benchmark_run (suite, case_count, pass_count, fail_count, result_json, notes)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                payload["suite"],
+                len(results),
+                pass_count,
+                fail_count,
+                json.dumps(results, ensure_ascii=False),
+                args.notes,
+            ),
+        )
+        payload["benchmark_run_id"] = cur.lastrowid
+    emit(payload, args.json)
+    if fail_count and args.fail_on_regression:
+        raise SystemExit(1)
+
+
 def cmd_adapter_run(args: argparse.Namespace) -> None:
     ensure_db()
     with connect() as conn:
@@ -1209,6 +1632,21 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--strict-active", action="store_true")
     check.set_defaults(func=cmd_check)
 
+    route = sub.add_parser("route", help="classify work and select workflow, skills, and capabilities")
+    route.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
+    route.add_argument("--summary", required=True)
+    route.add_argument("--intent", default="modify")
+    route.add_argument("--work-type", default="feature")
+    route.add_argument("--scope", default="module")
+    route.add_argument("--uncertainty", default="medium")
+    route.add_argument("--reversibility", default="easy")
+    route.add_argument("--risk", default="medium")
+    route.add_argument("--lane")
+    route.add_argument("--tag", action="append", default=[])
+    route.add_argument("--requires", action="append", default=[])
+    route.add_argument("--persist", action="store_true")
+    route.set_defaults(func=cmd_route)
+
     intake = sub.add_parser("intake", help="intake commands")
     intake_sub = intake.add_subparsers(dest="intake_command", required=True)
     intake_add = intake_sub.add_parser("add", help="record intake")
@@ -1315,6 +1753,43 @@ def build_parser() -> argparse.ArgumentParser:
     adapter_run.add_argument("--notes")
     adapter_run.set_defaults(func=cmd_adapter_run)
 
+    tool = sub.add_parser("tool", help="tool and capability registry commands")
+    tool_sub = tool.add_subparsers(dest="tool_command", required=True)
+    tool_register = tool_sub.add_parser("register", help="register or update a tool capability")
+    tool_register.add_argument("--id", required=True)
+    tool_register.add_argument("--capability", required=True)
+    tool_register.add_argument("--command", required=True)
+    tool_register.add_argument("--availability", default="unknown")
+    tool_register.add_argument("--trust", default="project_declared")
+    tool_register.add_argument("--notes")
+    tool_register.set_defaults(func=cmd_tool_register)
+    tool_seed = tool_sub.add_parser("seed", help="seed standard local/manual tool capabilities")
+    tool_seed.set_defaults(func=cmd_tool_seed)
+
+    approval = sub.add_parser("approval", help="human gate commands")
+    approval_sub = approval.add_subparsers(dest="approval_command", required=True)
+    approval_request = approval_sub.add_parser("request", help="request human approval for gated work")
+    approval_request.add_argument("--story")
+    approval_request.add_argument("--summary", required=True)
+    approval_request.add_argument("--risk", default="high")
+    approval_request.add_argument("--requested-by", default="harness")
+    approval_request.add_argument("--notes")
+    approval_request.set_defaults(func=cmd_approval_request)
+    approval_resolve = approval_sub.add_parser("resolve", help="resolve a pending human gate")
+    approval_resolve.add_argument("--id", type=int, required=True)
+    approval_resolve.add_argument("--status", required=True, choices=sorted(HUMAN_GATE_STATUSES - {"pending"}))
+    approval_resolve.add_argument("--resolved-by", default="human")
+    approval_resolve.add_argument("--notes")
+    approval_resolve.set_defaults(func=cmd_approval_resolve)
+
+    bench = sub.add_parser("bench", help="benchmark harness commands")
+    bench_sub = bench.add_subparsers(dest="bench_command", required=True)
+    bench_run = bench_sub.add_parser("run", help="run local routing benchmark cases")
+    bench_run.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
+    bench_run.add_argument("--fail-on-regression", action="store_true")
+    bench_run.add_argument("--notes")
+    bench_run.set_defaults(func=cmd_bench_run)
+
     run = sub.add_parser("run", help="runner commands")
     run_sub = run.add_subparsers(dest="run_command", required=True)
     run_once = run_sub.add_parser("once", help="run one orchestrated task")
@@ -1360,6 +1835,9 @@ def build_parser() -> argparse.ArgumentParser:
         ("tools", "tool"),
         ("runs", "agent_run"),
         ("adapters", "agent_adapter"),
+        ("routes", "route_decision"),
+        ("approvals", "human_gate"),
+        ("benchmarks", "benchmark_run"),
     ]:
         q = query_sub.add_parser(name, help=f"query {name}")
         q.add_argument("--limit", type=int, default=20)

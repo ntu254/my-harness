@@ -1,6 +1,6 @@
 # Adapters
 
-`my-harness` v0.4 adds a small adapter contract for agent commands.
+`my-harness` adds a small adapter contract for agent commands.
 
 Adapters are command templates registered in SQLite and executed through the
 same guarded runner path as `run once`. This keeps Claude, Codex, local scripts,
@@ -22,9 +22,43 @@ verification, and handoff.
 The command template may use simple placeholders:
 
 - `{prompt}`
+- `{prompt_shell}`
 - `{story_id}`
+- `{story_id_shell}`
 - `{summary}`
+- `{summary_shell}`
 - `{adapter}`
+- `{adapter_shell}`
+- `{prompt_file}`
+- `{prompt_file_shell}`
+
+Prefer `{prompt_shell}` or `{prompt_file_shell}` over raw `{prompt}`. Templates
+using raw `{prompt}` are rejected unless `--allow-raw-prompt` is passed.
+
+## Presets
+
+```powershell
+.\harness\harness.ps1 adapter preset list
+.\harness\harness.ps1 adapter preset all
+```
+
+Built-in presets:
+
+- `mock-python`: local smoke adapter
+- `codex-local`: Codex CLI shape, initially `unknown`
+- `claude-local`: Claude CLI shape, initially `unknown`
+
+Provider presets are intentionally marked `unknown` until local discovery or a
+smoke run proves the executable and command flags on the current machine.
+
+## Discovery
+
+```powershell
+.\harness\harness.ps1 adapter discover --adapter mock-python
+```
+
+Discovery checks the adapter executable and records `availability`,
+`trust_level`, `last_checked_at`, and `last_check_result`.
 
 ## Run
 
@@ -41,6 +75,25 @@ The command template may use simple placeholders:
   --uncertainty low `
   --reversibility easy
 ```
+
+Prompt-file input:
+
+```powershell
+.\harness\harness.ps1 adapter run `
+  --adapter mock-python `
+  --id MH-008-FILE `
+  --summary "Validate prompt file input" `
+  --prompt-file harness\prompts\MH-008.prompt.txt `
+  --verify-command "python -m py_compile cli/harness.py"
+```
+
+When `--prompt` is used, the harness writes a local prompt file under:
+
+```text
+harness/prompts/
+```
+
+That directory is ignored by git.
 
 The adapter run creates a normal `agent_run` record. The run stores:
 
@@ -71,7 +124,7 @@ Example shape:
 .\harness\harness.ps1 adapter register `
   --id codex-local `
   --provider codex `
-  --command-template "codex exec --prompt ""{prompt}""" `
+  --command-template "codex exec --prompt-file {prompt_file_shell}" `
   --availability unknown `
   --trust user_declared
 ```

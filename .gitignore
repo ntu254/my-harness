@@ -5,6 +5,7 @@ harness.db
 *.db-shm
 *.sqlite
 harness/runs/
+harness/prompts/
 
 # Logs and temporary files
 *.log

@@ -155,6 +155,34 @@
         "2026-07-19: harness/v0.4-acceptance.md recorded v0.4 evidence"
       ],
       "notes": "v0.4 adapter/check/migration MVP validated. Real Claude/Codex presets remain deferred."
+    },
+    {
+      "id": "MH-008",
+      "priority": 8,
+      "area": "v0.5",
+      "title": "Implement provider presets, prompt-file rendering, and adapter discovery",
+      "user_visible_behavior": "The harness can install built-in adapter presets, discover local adapter availability, render prompts into ignored runtime files, run adapters from prompt files, and reject raw prompt templates by default.",
+      "status": "passing",
+      "verification": [
+        "Run harness init and confirm schema version 3 applies",
+        "Install all built-in adapter presets",
+        "Discover mock-python adapter availability",
+        "Run MH-008 through mock-python with inline prompt",
+        "Confirm harness/prompts/MH-008.prompt.txt is generated",
+        "Run MH-008-FILE through mock-python with --prompt-file",
+        "Confirm raw {prompt} templates are rejected by default",
+        "Run harness check --include-active --strict-active"
+      ],
+      "evidence": [
+        "2026-07-19: .\\harness\\harness.ps1 --json init applied schema version 3",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter preset all installed mock-python, codex-local, and claude-local",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter discover --adapter mock-python returned availability present and Python 3.11.15",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter run --adapter mock-python --id MH-008 completed with evidence 7,8",
+        "2026-07-19: .\\harness\\harness.ps1 --json adapter run --adapter mock-python --id MH-008-FILE --prompt-file harness\\prompts\\MH-008.prompt.txt completed with evidence 9,10",
+        "2026-07-19: raw-prompt-guard adapter run was rejected without --allow-raw-prompt",
+        "2026-07-19: harness/v0.5-acceptance.md recorded v0.5 evidence"
+      ],
+      "notes": "v0.5 provider preset/prompt/discovery MVP validated. Real Codex/Claude smoke remains deferred."
     }
   ]
 }

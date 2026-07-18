@@ -8,13 +8,13 @@
   - POSIX: `bash harness/init.sh`
 - Standard verification path: run the startup path and any workflow-specific
   evidence listed in `harness/features.json`.
-- Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, `MH-006`, and `MH-007` are passing.
+- Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, `MH-006`, `MH-007`, and `MH-008` are passing.
 - Current blockers: none recorded.
 
 ## Best Next Step
 
-Plan v0.5 provider presets, prompt-file rendering, and adapter capability
-discovery on top of the validated adapter contract.
+Plan v0.6 real provider smoke gates, prompt template files, and shell-free
+adapter execution on top of the validated preset/discovery layer.
 
 ## Session Log
 
@@ -197,3 +197,54 @@ discovery on top of the validated adapter contract.
   - Schema migration has forward-only apply behavior and no rollback.
 - Best next step: design v0.5 provider presets, prompt-file rendering, adapter
   capability discovery, and a safer command-template quoting policy.
+
+### Session 006
+
+- Date: 2026-07-19
+- Goal: Implement v0.5 provider presets, prompt-file rendering, and adapter discovery.
+- Completed:
+  - Added `state/schema/003-adapter-discovery.sql`.
+  - Added adapter presets for `mock-python`, `codex-local`, and `claude-local`.
+  - Added `adapter preset`.
+  - Added `adapter discover`.
+  - Added `adapter run --prompt-file`.
+  - Added runtime prompt-file generation under `harness/prompts/`.
+  - Added shell-quoted placeholders and raw prompt guard.
+- Verification executed:
+  - `.\harness\harness.ps1 --json init`
+  - `python -m py_compile cli\harness.py`
+  - `.\harness\harness.ps1 adapter preset list`
+  - `.\harness\harness.ps1 --json adapter preset all`
+  - `.\harness\harness.ps1 --json adapter discover --adapter mock-python`
+  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-008 ...`
+  - `Test-Path harness\prompts\MH-008.prompt.txt`
+  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-008-FILE --prompt-file ...`
+  - raw `{prompt}` guard rejection smoke
+  - `.\harness\harness.ps1 --json check --include-active --strict-active`
+- Evidence recorded:
+  - `harness/v0.5-plan.md`
+  - `harness/v0.5-acceptance.md`
+  - `harness/features.json`
+  - local runtime DB: `harness/harness.db` (ignored by git)
+  - local runtime logs: `harness/runs/` (ignored by git)
+  - local runtime prompts: `harness/prompts/` (ignored by git)
+- Commit: recorded in the latest `origin/main` history after push.
+- Updated files or artifacts:
+  - `.gitignore`
+  - `README.md`
+  - `docs/ADAPTERS.md`
+  - `docs/CHECKS.md`
+  - `docs/CLI.md`
+  - `harness.yaml`
+  - `harness/features.json`
+  - `harness/progress.md`
+  - `harness/v0.5-plan.md`
+  - `harness/v0.5-acceptance.md`
+  - `cli/harness.py`
+  - `state/schema/003-adapter-discovery.sql`
+- Known risks:
+  - POSIX wrapper not executed in a POSIX shell in this session.
+  - Codex and Claude presets are not provider-smoked yet.
+  - Command templates still execute through a shell.
+- Best next step: design v0.6 provider smoke gates, prompt template files, and
+  shell-free adapter execution for safer command construction.

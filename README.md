@@ -47,6 +47,13 @@ SQLite, or multi-agent automation.
 - A standard `harness check` command for startup, JSON, compile, whitespace, and active-queue gates.
 - Adapter/tool registry state for future Claude and Codex integrations.
 
+## What v0.5 Adds
+
+- Provider adapter presets for `mock-python`, `codex-local`, and `claude-local`.
+- Adapter executable discovery through `adapter discover`.
+- Prompt-file rendering and `adapter run --prompt-file`.
+- Safer template placeholders such as `{prompt_shell}` and `{prompt_file_shell}`.
+
 ## What v0.1 Deferred
 
 - No multi-agent orchestration.
@@ -65,6 +72,7 @@ On Windows:
 .\harness\harness.ps1 query active
 .\harness\harness.ps1 run once --help
 .\harness\harness.ps1 check --include-active --strict-active
+.\harness\harness.ps1 adapter preset list
 ```
 
 On macOS/Linux:
@@ -74,6 +82,7 @@ bash harness/init.sh
 bash harness/harness.sh query active
 bash harness/harness.sh run once --help
 bash harness/harness.sh check --include-active --strict-active
+bash harness/harness.sh adapter preset list
 ```
 
 Then read:

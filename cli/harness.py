@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import sqlite3
 import subprocess
 import sys
@@ -51,6 +52,39 @@ TRACE_OUTCOMES = {"completed", "partial", "blocked", "failed"}
 RUN_STATUSES = {"in_progress", "completed", "failed", "blocked", "needs_human"}
 ADAPTER_AVAILABILITY = {"present", "missing", "unknown", "inactive"}
 ADAPTER_TRUST = {"project_declared", "user_declared", "verified_local"}
+
+ADAPTER_PRESETS: dict[str, dict[str, str]] = {
+    "mock-python": {
+        "id": "mock-python",
+        "provider": "mock",
+        "command_template": "python --version",
+        "availability": "present",
+        "trust_level": "verified_local",
+        "executable": "python",
+        "version_command": "python --version",
+        "notes": "Local smoke adapter that never sends prompts to an external model.",
+    },
+    "codex-local": {
+        "id": "codex-local",
+        "provider": "codex",
+        "command_template": "codex exec --prompt-file {prompt_file_shell}",
+        "availability": "unknown",
+        "trust_level": "user_declared",
+        "executable": "codex",
+        "version_command": "codex --version",
+        "notes": "Codex CLI preset. Verify locally before use; flags may vary by installed version.",
+    },
+    "claude-local": {
+        "id": "claude-local",
+        "provider": "claude",
+        "command_template": "claude -p {prompt_shell}",
+        "availability": "unknown",
+        "trust_level": "user_declared",
+        "executable": "claude",
+        "version_command": "claude --version",
+        "notes": "Claude CLI preset. Verify locally before use; flags may vary by installed version.",
+    },
+}
 
 
 def db_path() -> Path:
@@ -202,11 +236,61 @@ def run_command(command: str, timeout: int) -> subprocess.CompletedProcess[str]:
     )
 
 
+def shell_quote(value: str) -> str:
+    if os.name == "nt":
+        return subprocess.list2cmdline([value])
+    return shlex.quote(value)
+
+
 def render_template(template: str, values: dict[str, str]) -> str:
     rendered = template
     for key, value in values.items():
         rendered = rendered.replace("{" + key + "}", value)
     return rendered
+
+
+def prompt_dir() -> Path:
+    path = ROOT / "harness" / "prompts"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def write_prompt_file(story_id: str, prompt: str) -> str:
+    path = prompt_dir() / f"{sanitize_name(story_id)}.prompt.txt"
+    path.write_text(prompt, encoding="utf-8")
+    return str(path.relative_to(ROOT))
+
+
+def read_prompt(args: argparse.Namespace) -> tuple[str, str | None]:
+    if args.prompt and args.prompt_file:
+        raise SystemExit("use --prompt or --prompt-file, not both")
+    if args.prompt_file:
+        path = Path(args.prompt_file)
+        if not path.is_absolute():
+            path = ROOT / path
+        if not path.exists():
+            raise SystemExit(f"prompt file not found: {path}")
+        return path.read_text(encoding="utf-8"), str(path.relative_to(ROOT))
+    if args.prompt:
+        return args.prompt, None
+    raise SystemExit("adapter run requires --prompt or --prompt-file")
+
+
+def adapter_command_values(args: argparse.Namespace, prompt: str, prompt_file: str | None) -> dict[str, str]:
+    prompt_file = prompt_file or write_prompt_file(args.id, prompt)
+    values = {
+        "prompt": prompt,
+        "prompt_shell": shell_quote(prompt),
+        "prompt_file": prompt_file,
+        "prompt_file_shell": shell_quote(prompt_file),
+        "story_id": args.id,
+        "story_id_shell": shell_quote(args.id),
+        "summary": args.summary,
+        "summary_shell": shell_quote(args.summary),
+        "adapter": args.adapter,
+        "adapter_shell": shell_quote(args.adapter),
+    }
+    return values
 
 
 def write_run_log(run_id: int, story_id: str, stage: str, command: str, result: subprocess.CompletedProcess[str]) -> str:
@@ -273,6 +357,7 @@ def check_required_files() -> list[dict[str, Any]]:
         "cli/harness.py",
         "state/schema/001-init.sql",
         "state/schema/002-adapters.sql",
+        "state/schema/003-adapter-discovery.sql",
     ]
     return [
         {
@@ -447,20 +532,26 @@ def cmd_adapter_register(args: argparse.Namespace) -> None:
         "command_template": args.command_template,
         "availability": validate_choice(args.availability, ADAPTER_AVAILABILITY, "availability"),
         "trust_level": validate_choice(args.trust, ADAPTER_TRUST, "trust"),
+        "executable": args.executable,
+        "version_command": args.version_command,
         "notes": args.notes,
     }
     with connect() as conn:
         conn.execute(
             """
             INSERT INTO agent_adapter
-              (id, provider, command_template, availability, trust_level, notes)
+              (id, provider, command_template, availability, trust_level,
+               executable, version_command, notes)
             VALUES
-              (:id, :provider, :command_template, :availability, :trust_level, :notes)
+              (:id, :provider, :command_template, :availability, :trust_level,
+               :executable, :version_command, :notes)
             ON CONFLICT(id) DO UPDATE SET
               provider = excluded.provider,
               command_template = excluded.command_template,
               availability = excluded.availability,
               trust_level = excluded.trust_level,
+              executable = excluded.executable,
+              version_command = excluded.version_command,
               notes = excluded.notes
             """,
             values,
@@ -481,9 +572,142 @@ def cmd_adapter_register(args: argparse.Namespace) -> None:
     emit(values, args.json)
 
 
+def register_adapter_values(values: dict[str, Any]) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO agent_adapter
+              (id, provider, command_template, availability, trust_level,
+               executable, version_command, notes)
+            VALUES
+              (:id, :provider, :command_template, :availability, :trust_level,
+               :executable, :version_command, :notes)
+            ON CONFLICT(id) DO UPDATE SET
+              provider = excluded.provider,
+              command_template = excluded.command_template,
+              availability = excluded.availability,
+              trust_level = excluded.trust_level,
+              executable = excluded.executable,
+              version_command = excluded.version_command,
+              notes = excluded.notes
+            """,
+            values,
+        )
+        conn.execute(
+            """
+            INSERT INTO tool (id, capability, command, availability, trust_level, notes)
+            VALUES (:id, 'agent_adapter', :command_template, :availability, :trust_level, :notes)
+            ON CONFLICT(id) DO UPDATE SET
+              capability = excluded.capability,
+              command = excluded.command,
+              availability = excluded.availability,
+              trust_level = excluded.trust_level,
+              notes = excluded.notes
+            """,
+            values,
+        )
+
+
+def cmd_adapter_preset(args: argparse.Namespace) -> None:
+    ensure_db()
+    if args.name == "list":
+        emit(list(ADAPTER_PRESETS.values()), args.json)
+        return
+    names = list(ADAPTER_PRESETS) if args.name == "all" else [args.name]
+    installed: list[dict[str, str]] = []
+    for name in names:
+        if name not in ADAPTER_PRESETS:
+            raise SystemExit(f"unknown adapter preset: {name}")
+        values = dict(ADAPTER_PRESETS[name])
+        register_adapter_values(values)
+        installed.append(values)
+    emit(installed if len(installed) != 1 else installed[0], args.json)
+
+
 def cmd_adapter_list(args: argparse.Namespace) -> None:
     ensure_db()
     query_table("agent_adapter", args)
+
+
+def discover_executable(executable: str) -> tuple[str, str | None]:
+    command = "where" if os.name == "nt" else "command -v"
+    try:
+        if os.name == "nt":
+            result = subprocess.run(
+                ["where", executable],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        else:
+            result = subprocess.run(
+                ["sh", "-lc", f"command -v {shlex.quote(executable)}"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+    except subprocess.TimeoutExpired:
+        return "missing", f"discovery timed out: {command} {executable}"
+    if result.returncode == 0:
+        first = next((line.strip() for line in result.stdout.splitlines() if line.strip()), None)
+        return "present", first
+    return "missing", result.stderr.strip() or result.stdout.strip() or "not found"
+
+
+def cmd_adapter_discover(args: argparse.Namespace) -> None:
+    ensure_db()
+    with connect() as conn:
+        if args.adapter:
+            rows = conn.execute("SELECT * FROM agent_adapter WHERE id = ?", (args.adapter,)).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM agent_adapter ORDER BY id").fetchall()
+    results: list[dict[str, Any]] = []
+    with connect() as conn:
+        for row in rows:
+            executable = row["executable"] or row["provider"]
+            availability, detail = discover_executable(executable)
+            version_result: subprocess.CompletedProcess[str] | None = None
+            version_output = None
+            if availability == "present" and row["version_command"]:
+                try:
+                    version_result = run_command(row["version_command"], args.timeout)
+                    version_output = (version_result.stdout or version_result.stderr).strip()
+                except subprocess.TimeoutExpired:
+                    version_output = "version command timed out"
+            if availability == "present":
+                trust = "verified_local"
+            else:
+                trust = row["trust_level"]
+            conn.execute(
+                """
+                UPDATE agent_adapter
+                SET availability = ?, trust_level = ?, last_checked_at = datetime('now'),
+                    last_check_result = ?
+                WHERE id = ?
+                """,
+                (availability, trust, version_output or detail, row["id"]),
+            )
+            conn.execute(
+                """
+                UPDATE tool
+                SET availability = ?, trust_level = ?, notes = ?
+                WHERE id = ?
+                """,
+                (availability, trust, version_output or detail, row["id"]),
+            )
+            results.append(
+                {
+                    "id": row["id"],
+                    "provider": row["provider"],
+                    "executable": executable,
+                    "availability": availability,
+                    "detail": detail,
+                    "version": version_output,
+                }
+            )
+    emit(results, args.json)
 
 
 def cmd_adapter_run(args: argparse.Namespace) -> None:
@@ -494,15 +718,11 @@ def cmd_adapter_run(args: argparse.Namespace) -> None:
         raise SystemExit(f"adapter not found: {args.adapter}")
     if adapter["availability"] in {"missing", "inactive"} and not args.allow_unavailable:
         raise SystemExit(f"adapter is {adapter['availability']}: {args.adapter}")
-    agent_command = render_template(
-        adapter["command_template"],
-        {
-            "prompt": args.prompt,
-            "story_id": args.id,
-            "summary": args.summary,
-            "adapter": args.adapter,
-        },
-    )
+    prompt, prompt_file = read_prompt(args)
+    values = adapter_command_values(args, prompt, prompt_file)
+    agent_command = render_template(adapter["command_template"], values)
+    if "{prompt}" in adapter["command_template"] and not args.allow_raw_prompt:
+        raise SystemExit("adapter template uses raw {prompt}; use {prompt_shell}, {prompt_file_shell}, or --allow-raw-prompt")
     run_args = argparse.Namespace(
         json=args.json,
         id=args.id,
@@ -522,7 +742,7 @@ def cmd_adapter_run(args: argparse.Namespace) -> None:
         changed=args.changed,
         notes=args.notes or f"adapter={args.adapter}",
         adapter=args.adapter,
-        prompt=args.prompt,
+        prompt=prompt,
     )
     cmd_run_once(run_args)
 
@@ -865,8 +1085,17 @@ def build_parser() -> argparse.ArgumentParser:
     adapter_register.add_argument("--command-template", required=True)
     adapter_register.add_argument("--availability", default="unknown")
     adapter_register.add_argument("--trust", default="project_declared")
+    adapter_register.add_argument("--executable")
+    adapter_register.add_argument("--version-command")
     adapter_register.add_argument("--notes")
     adapter_register.set_defaults(func=cmd_adapter_register)
+    adapter_preset = adapter_sub.add_parser("preset", help="install or list adapter presets")
+    adapter_preset.add_argument("name", help="preset name, 'all', or 'list'")
+    adapter_preset.set_defaults(func=cmd_adapter_preset)
+    adapter_discover = adapter_sub.add_parser("discover", help="discover adapter executable availability")
+    adapter_discover.add_argument("--adapter")
+    adapter_discover.add_argument("--timeout", type=int, default=20)
+    adapter_discover.set_defaults(func=cmd_adapter_discover)
     adapter_list = adapter_sub.add_parser("list", help="list registered adapters")
     adapter_list.add_argument("--limit", type=int, default=20)
     adapter_list.set_defaults(func=cmd_adapter_list)
@@ -874,7 +1103,8 @@ def build_parser() -> argparse.ArgumentParser:
     adapter_run.add_argument("--adapter", required=True)
     adapter_run.add_argument("--id", required=True)
     adapter_run.add_argument("--summary", required=True)
-    adapter_run.add_argument("--prompt", required=True)
+    adapter_run.add_argument("--prompt")
+    adapter_run.add_argument("--prompt-file")
     adapter_run.add_argument("--verify-command", required=True)
     adapter_run.add_argument("--intent", default="modify")
     adapter_run.add_argument("--work-type", default="feature")
@@ -887,6 +1117,7 @@ def build_parser() -> argparse.ArgumentParser:
     adapter_run.add_argument("--timeout", type=int, default=1800)
     adapter_run.add_argument("--allow-high-risk", action="store_true")
     adapter_run.add_argument("--allow-unavailable", action="store_true")
+    adapter_run.add_argument("--allow-raw-prompt", action="store_true")
     adapter_run.add_argument("--changed")
     adapter_run.add_argument("--notes")
     adapter_run.set_defaults(func=cmd_adapter_run)

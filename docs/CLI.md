@@ -39,6 +39,8 @@ harness story update
 harness evidence add
 harness adapter register
 harness adapter list
+harness adapter preset
+harness adapter discover
 harness adapter run
 harness trace add
 harness run once
@@ -121,6 +123,13 @@ Adapter example:
   --summary "Validate adapter contract" `
   --prompt "Implement the requested task" `
   --verify-command "python -m py_compile cli/harness.py"
+```
+
+Preset and discovery example:
+
+```powershell
+.\harness\harness.ps1 adapter preset all
+.\harness\harness.ps1 adapter discover --adapter mock-python
 ```
 
 ## State Transition Safety

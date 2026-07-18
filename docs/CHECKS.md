@@ -35,6 +35,7 @@ Each file must start with a numeric version, for example:
 
 - `001-init.sql`
 - `002-adapters.sql`
+- `003-adapter-discovery.sql`
 
 `harness init` and `harness check` apply only missing versions and record them
 in the `schema_version` table.

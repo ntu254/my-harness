@@ -1,6 +1,6 @@
 schema_version: 0.1
 name: my-harness
-version: 0.10.0
+version: 0.10.1
 principle: "Use the smallest process that safely proves the work."
 lanes:
   - tiny
@@ -31,5 +31,10 @@ docs:
   adapters: docs/ADAPTERS.md
   checks: docs/CHECKS.md
   contracts: docs/CONTRACTS.md
+  release_install: docs/RELEASE_INSTALL.md
   decisions: docs/decisions/
   cross_repo_ideas: ANALYSIS_CROSS_REPO_IDEAS.md
+package:
+  npm_name: "@ntu254/my-harness"
+  launcher: bin/my-harness.js
+  packaged_workspace_env: MY_HARNESS_WORKSPACE

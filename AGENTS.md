@@ -4,7 +4,7 @@ This repository is designed for long-running coding-agent work. The goal is not
 to maximize raw code output. The goal is to leave the repository in a state
 where the next session can continue without guessing.
 
-This repository uses `my-harness` through v0.9. The harness is the control layer
+This repository uses `my-harness` through v0.10.1. The harness is the control layer
 agents touch; the app or target repository is what users touch.
 
 Use the smallest process that safely proves the work. Tiny work must stay
@@ -38,6 +38,8 @@ Prefer durable repository artifacts over chat-only summaries.
 - v0.8: `route`, skill/tool/capability resolver, human gate records, benchmarks.
 - v0.9: `report final`, `complete`, evidence freshness, scoped approvals, and benchmark scores.
 - v0.10: schema contracts, CLI contract tests, and `check`-level regression coverage.
+- v0.10.1: npm launcher metadata, workspace-safe packaged execution, and
+  historical tag install testing.
 
 Update this section only after the capability exists in the repository and the
 required verification has passed. Planned or aspirational work belongs in the

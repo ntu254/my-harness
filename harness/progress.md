@@ -504,3 +504,42 @@ readiness before provider adapters.
   - Project-pack adoption and executable ADR/constitution checks remain future work.
   - Cross-repo ideas are curated manually; no automated repo mining exists.
 - Best next step: run final check, then choose between project-pack/adoption workflow and schema validation.
+
+### Session 014
+
+- Date: 2026-07-19
+- Goal: Add a release/install experience so historical versions can be tested
+  by Git tag and future `npx` launcher usage.
+- Completed:
+  - Added `package.json` for the future `@ntu254/my-harness` npm package.
+  - Added `bin/my-harness.js`, a Node stdlib launcher that can either run the
+    packaged Python CLI or install a tagged source version into an empty target
+    directory.
+  - Split package resources from runtime workspace behavior in `cli/harness.py`
+    using `PACKAGE_ROOT` and `MY_HARNESS_WORKSPACE`.
+  - Added `docs/RELEASE_INSTALL.md` with Git tag, GitHub, npx, npm, and release
+    checklist guidance.
+  - Updated README, docs index, manifest, and feature state for v0.10.1.
+- Verification executed:
+  - `node --check bin/my-harness.js`
+  - `node .\bin\my-harness.js install --version v0.2.0 --target <tmp> --dry-run`
+  - packaged launcher init/check against a temp workspace
+  - `npm pack --dry-run`
+  - `npm run check`
+  - `.\harness\harness.ps1 check --include-active --strict-active`
+- Evidence recorded:
+  - `package.json`
+  - `bin/my-harness.js`
+  - `docs/RELEASE_INSTALL.md`
+  - `README.md`
+  - `docs/INDEX.md`
+  - `harness.yaml`
+  - `harness/features.json`
+  - `harness/progress.md`
+- Known risks:
+  - npm publishing still requires valid npm credentials and is not performed by
+    local code changes alone.
+  - GitHub tags/releases must be pushed separately after the working tree is in
+    a safe committed state.
+- Best next step: verify the launcher, backfill version tags, commit the release
+  install slice, then push tags/code if credentials allow.

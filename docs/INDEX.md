@@ -29,6 +29,8 @@ history.
 - `docs/GATES.md`: final report and completion gates.
 - `docs/CHECKS.md`: standard baseline checks.
 - `docs/CONTRACTS.md`: schema and CLI command contracts.
+- `docs/RELEASE_INSTALL.md`: Git tags, historical version testing, npx launcher,
+  and npm publish checklist.
 - `docs/BENCHMARKS.md`: route benchmark fixtures and scoring.
 - `docs/TRACE.md`: trace and evidence recording.
 

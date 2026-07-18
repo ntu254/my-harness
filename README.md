@@ -92,12 +92,22 @@ proven.
 - `harness check` now runs contract tests as part of the baseline.
 - README/manifest alignment with the verified capability surface.
 
+## What v0.10.1 Adds
+
+- npm package metadata and a `my-harness` launcher for future `npx` use.
+- `my-harness install --version <tag> --target <dir>` for testing historical
+  GitHub tags in a fresh directory.
+- Runtime workspace separation so packaged execution writes DB/log/prompt state
+  to the current project directory instead of the package cache.
+- `docs/RELEASE_INSTALL.md` with tag, GitHub, and npm release instructions.
+
 ## Still Deferred
 
 - No multi-agent orchestration.
 - No real Codex/Claude provider conformance suite yet.
 - No live UI variant mode.
-- No installer/project-pack adoption command yet.
+- No project-pack adoption command yet.
+- No npm package has been published yet.
 - No real agent-output benchmark scoring yet.
 
 The CLI and SQLite state spine are in place. Provider adapters, multi-agent
@@ -115,6 +125,14 @@ On Windows:
 .\harness\harness.ps1 check --include-active --strict-active
 .\harness\harness.ps1 adapter preset list
 python -m unittest discover -s tests -p "test_*.py"
+```
+
+Packaged launcher smoke:
+
+```powershell
+node .\bin\my-harness.js --json init
+node .\bin\my-harness.js check --include-active --strict-active
+node .\bin\my-harness.js install --version v0.2.0 --target .\my-harness-v0.2 --dry-run
 ```
 
 On macOS/Linux:
@@ -139,7 +157,8 @@ Then read:
 7. `docs/ADAPTERS.md` when registering Claude, Codex, or local adapters
 8. `docs/CHECKS.md` before closing a version
 9. `docs/CONTRACTS.md` before changing public command output shapes
-10. The workflow doc that matches the request
+10. `docs/RELEASE_INSTALL.md` before tagging or publishing
+11. The workflow doc that matches the request
 
 ## Completion Rule
 

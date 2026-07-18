@@ -343,6 +343,32 @@
         "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active passed"
       ],
       "notes": "This is a documentation and continuity hardening slice. It does not add project-pack adoption, schema validation, or provider conformance yet."
+    },
+    {
+      "id": "MH-015",
+      "priority": 15,
+      "area": "v0.10.1",
+      "title": "Add release/install launcher for version testing",
+      "user_visible_behavior": "A user can run the packaged harness launcher locally, dry-run installation of a historical Git tag, and follow documented GitHub/npm release steps.",
+      "status": "passing",
+      "verification": [
+        "Add npm package metadata with a bin launcher",
+        "Make packaged execution write runtime state to the workspace instead of the package root",
+        "Document historical tag testing and npm publish workflow",
+        "Run launcher syntax check, dry-run install, packaged init, and harness check"
+      ],
+      "evidence": [
+        "2026-07-19: package.json and bin/my-harness.js added for future npx usage",
+        "2026-07-19: cli/harness.py now separates PACKAGE_ROOT resources from MY_HARNESS_WORKSPACE runtime state",
+        "2026-07-19: docs/RELEASE_INSTALL.md added with Git tag, GitHub, and npm workflow",
+        "2026-07-19: node --check bin/my-harness.js passed",
+        "2026-07-19: node .\\bin\\my-harness.js install --version v0.2.0 --target .\\tmp\\my-harness-v0.2 --dry-run passed",
+        "2026-07-19: packaged launcher init created harness\\harness.db under MY_HARNESS_WORKSPACE temp path",
+        "2026-07-19: npm pack --dry-run produced a clean package without DB, runtime logs, prompts, or pycache",
+        "2026-07-19: npm run check passed",
+        "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active passed"
+      ],
+      "notes": "This is a release/install experience patch. It is not the v0.11 authority/protocol hardening slice and it is not the v0.12 project-pack adoption command."
     }
   ]
 }

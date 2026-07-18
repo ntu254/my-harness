@@ -16,9 +16,11 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DB = ROOT / "harness" / "harness.db"
-SCHEMA_DIR = ROOT / "state" / "schema"
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+WORKSPACE_ROOT = Path(os.environ.get("MY_HARNESS_WORKSPACE", PACKAGE_ROOT)).resolve()
+ROOT = PACKAGE_ROOT
+DEFAULT_DB = WORKSPACE_ROOT / "harness" / "harness.db"
+SCHEMA_DIR = PACKAGE_ROOT / "state" / "schema"
 
 
 INTENTS = {"read", "analyze", "plan", "modify", "execute"}
@@ -58,8 +60,8 @@ VERIFICATION_MODES = {"shell", "argv", "native"}
 HUMAN_GATE_STATUSES = {"pending", "approved", "rejected", "cancelled"}
 COMPLETION_STATUSES = {"pass", "blocked", "weak"}
 
-SKILL_REGISTRY = ROOT / "harness" / "skills.json"
-BENCHMARK_REGISTRY = ROOT / "harness" / "benchmarks.json"
+SKILL_REGISTRY = PACKAGE_ROOT / "harness" / "skills.json"
+BENCHMARK_REGISTRY = PACKAGE_ROOT / "harness" / "benchmarks.json"
 
 ADAPTER_PRESETS: dict[str, dict[str, str]] = {
     "mock-python": {
@@ -202,11 +204,28 @@ def emit(data: Any, as_json: bool = False) -> None:
     print(data)
 
 
+def relative_text(path: Path, root: Path) -> str:
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path)
+
+
+def resolve_resource_or_workspace_path(value: str) -> Path:
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    workspace_path = WORKSPACE_ROOT / path
+    if workspace_path.exists():
+        return workspace_path
+    return PACKAGE_ROOT / path
+
+
 def git_head() -> str | None:
     try:
         return subprocess.check_output(
             ["git", "rev-parse", "HEAD"],
-            cwd=ROOT,
+            cwd=WORKSPACE_ROOT,
             stderr=subprocess.DEVNULL,
             text=True,
         ).strip()
@@ -218,7 +237,7 @@ def git_dirty_files() -> str:
     try:
         output = subprocess.check_output(
             ["git", "status", "--short"],
-            cwd=ROOT,
+            cwd=WORKSPACE_ROOT,
             stderr=subprocess.DEVNULL,
             text=True,
         )
@@ -265,10 +284,10 @@ def sanitize_name(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-") or "run"
 
 
-def run_command(command: str, timeout: int) -> subprocess.CompletedProcess[str]:
+def run_command(command: str, timeout: int, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         command,
-        cwd=ROOT,
+        cwd=cwd or WORKSPACE_ROOT,
         shell=True,
         capture_output=True,
         text=True,
@@ -276,10 +295,10 @@ def run_command(command: str, timeout: int) -> subprocess.CompletedProcess[str]:
     )
 
 
-def run_argv(argv: list[str], timeout: int) -> subprocess.CompletedProcess[str]:
+def run_argv(argv: list[str], timeout: int, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         argv,
-        cwd=ROOT,
+        cwd=cwd or WORKSPACE_ROOT,
         shell=False,
         capture_output=True,
         text=True,
@@ -555,7 +574,7 @@ def build_route_decision(args: argparse.Namespace, persist: bool = False) -> dic
 
 
 def prompt_dir() -> Path:
-    path = ROOT / "harness" / "prompts"
+    path = WORKSPACE_ROOT / "harness" / "prompts"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -563,7 +582,7 @@ def prompt_dir() -> Path:
 def write_prompt_file(story_id: str, prompt: str) -> str:
     path = prompt_dir() / f"{sanitize_name(story_id)}.prompt.txt"
     path.write_text(prompt, encoding="utf-8")
-    return str(path.relative_to(ROOT))
+    return relative_text(path, WORKSPACE_ROOT)
 
 
 def read_prompt(args: argparse.Namespace) -> tuple[str, str | None]:
@@ -571,9 +590,7 @@ def read_prompt(args: argparse.Namespace) -> tuple[str, str | None]:
     if sum(sources) > 1:
         raise SystemExit("use only one of --prompt, --prompt-file, or --prompt-template")
     if getattr(args, "prompt_template", None):
-        path = Path(args.prompt_template)
-        if not path.is_absolute():
-            path = ROOT / path
+        path = resolve_resource_or_workspace_path(args.prompt_template)
         if not path.exists():
             raise SystemExit(f"prompt template not found: {path}")
         prompt = path.read_text(encoding="utf-8")
@@ -581,12 +598,10 @@ def read_prompt(args: argparse.Namespace) -> tuple[str, str | None]:
             prompt = prompt.replace("{{" + key + "}}", value)
         return prompt, None
     if args.prompt_file:
-        path = Path(args.prompt_file)
-        if not path.is_absolute():
-            path = ROOT / path
+        path = resolve_resource_or_workspace_path(args.prompt_file)
         if not path.exists():
             raise SystemExit(f"prompt file not found: {path}")
-        return path.read_text(encoding="utf-8"), str(path.relative_to(ROOT))
+        return path.read_text(encoding="utf-8"), relative_text(path, WORKSPACE_ROOT)
     if args.prompt:
         return args.prompt, None
     raise SystemExit("adapter run requires --prompt or --prompt-file")
@@ -623,7 +638,7 @@ def adapter_command_values(args: argparse.Namespace, prompt: str, prompt_file: s
 
 
 def write_run_log(run_id: int, story_id: str, stage: str, command: str, result: subprocess.CompletedProcess[str]) -> str:
-    log_dir = ROOT / "harness" / "runs" / f"{sanitize_name(story_id)}-{run_id}"
+    log_dir = WORKSPACE_ROOT / "harness" / "runs" / f"{sanitize_name(story_id)}-{run_id}"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{stage}.log"
     log_path.write_text(
@@ -642,7 +657,7 @@ def write_run_log(run_id: int, story_id: str, stage: str, command: str, result: 
         ),
         encoding="utf-8",
     )
-    return str(log_path.relative_to(ROOT))
+    return relative_text(log_path, WORKSPACE_ROOT)
 
 
 def insert_evidence(conn: sqlite3.Connection, values: dict[str, Any]) -> int:
@@ -907,9 +922,12 @@ def check_required_files() -> list[dict[str, Any]]:
         "ANALYSIS_CROSS_REPO_IDEAS.md",
         "docs/INDEX.md",
         "docs/CONTRACTS.md",
+        "docs/RELEASE_INSTALL.md",
         "docs/decisions/ADR-001-state-store.md",
         "docs/GATES.md",
         "templates/prompts/adapter-smoke.md",
+        "package.json",
+        "bin/my-harness.js",
     ]
     return [
         {
@@ -921,9 +939,9 @@ def check_required_files() -> list[dict[str, Any]]:
     ]
 
 
-def check_command(name: str, command: str, timeout: int = 60) -> dict[str, Any]:
+def check_command(name: str, command: str, timeout: int = 60, cwd: Path | None = None) -> dict[str, Any]:
     try:
-        result = run_command(command, timeout)
+        result = run_command(command, timeout, cwd=cwd)
         return {
             "name": name,
             "status": "pass" if result.returncode == 0 else "fail",
@@ -939,16 +957,18 @@ def cmd_check(args: argparse.Namespace) -> None:
     checks = check_required_files()
     checks.extend(
         [
-            check_command("features.json parses", "python -m json.tool harness/features.json", args.timeout),
-            check_command("skills.json parses", "python -m json.tool harness/skills.json", args.timeout),
-            check_command("benchmarks.json parses", "python -m json.tool harness/benchmarks.json", args.timeout),
-            check_command("skill schema parses", "python -m json.tool schemas/skill.schema.json", args.timeout),
-            check_command("benchmark schema parses", "python -m json.tool schemas/benchmark.schema.json", args.timeout),
-            check_command("route schema parses", "python -m json.tool schemas/route-decision.schema.json", args.timeout),
-            check_command("final report schema parses", "python -m json.tool schemas/final-report.schema.json", args.timeout),
-            check_command("cli compiles", "python -m py_compile cli/harness.py", args.timeout),
-            check_command("cli contract tests", 'python -m unittest discover -s tests -p "test_*.py"', args.timeout),
-            check_command("git diff whitespace", "git diff --check", args.timeout),
+            check_command("features.json parses", "python -m json.tool harness/features.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("skills.json parses", "python -m json.tool harness/skills.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("benchmarks.json parses", "python -m json.tool harness/benchmarks.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("skill schema parses", "python -m json.tool schemas/skill.schema.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("benchmark schema parses", "python -m json.tool schemas/benchmark.schema.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("route schema parses", "python -m json.tool schemas/route-decision.schema.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("final report schema parses", "python -m json.tool schemas/final-report.schema.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("cli compiles", "python -m py_compile cli/harness.py", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("cli contract tests", 'python -m unittest discover -s tests -p "test_*.py"', args.timeout, cwd=PACKAGE_ROOT),
+            check_command("package.json parses", "python -m json.tool package.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("npm launcher syntax", "node --check bin/my-harness.js", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("git diff whitespace", "git diff --check", args.timeout, cwd=WORKSPACE_ROOT),
         ]
     )
     if args.include_active:

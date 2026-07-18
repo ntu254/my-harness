@@ -1,0 +1,37 @@
+{
+  "name": "@ntu254/my-harness",
+  "version": "0.10.1",
+  "description": "Lightweight control layer for AI coding agents.",
+  "bin": {
+    "my-harness": "bin/my-harness.js",
+    "harness": "bin/my-harness.js"
+  },
+  "files": [
+    "AGENTS.md",
+    "README.md",
+    "ANALYSIS_CROSS_REPO_IDEAS.md",
+    "bin/",
+    "cli/harness.py",
+    "docs/**/*.md",
+    "harness/*.json",
+    "harness/*.md",
+    "harness/*.ps1",
+    "harness/*.sh",
+    "schemas/*.json",
+    "state/schema/[0-9]*.sql",
+    "templates/**/*.md",
+    "tests/test_*.py",
+    "harness.yaml"
+  ],
+  "scripts": {
+    "check": "node --check bin/my-harness.js && python -m py_compile cli/harness.py && python -m unittest discover -s tests -p \"test_*.py\"",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "UNLICENSED"
+}

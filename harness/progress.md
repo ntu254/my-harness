@@ -590,3 +590,25 @@ readiness before provider adapters.
     contracts and authority boundaries are stable.
 - Best next step: run full verification, then continue v0.11 authority and
   protocol hardening.
+
+### Session 016
+
+- Date: 2026-07-19
+- Goal: Rewrite README as a professional user-facing guide that includes usage
+  and feature coverage.
+- Completed:
+  - Replaced the version-by-version README with a structured guide covering
+    purpose, status, requirements, quick start, historical version install,
+    core features, command examples, project layout, verification, version
+    timeline, deferred work, roadmap, and operating rule.
+  - Kept the README portable for GitHub by avoiding local absolute workspace
+    paths.
+  - Updated `harness/features.json` with `MH-017`.
+- Verification executed:
+  - `python -m json.tool harness\features.json`
+  - `.\harness\harness.ps1 check --include-active --strict-active`
+- Known risks:
+  - This is documentation-only; npm publish and adoption command remain
+    deferred.
+- Best next step: continue v0.11 authority and protocol hardening after README
+  verification.

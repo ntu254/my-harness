@@ -397,6 +397,25 @@
         "2026-07-19: harness check now requires tests/test_professional_review_contracts.py"
       ],
       "notes": "This absorbs the highest-ROI test coverage recommendation from the professional review. Large modularization and real provider conformance remain deferred."
+    },
+    {
+      "id": "MH-017",
+      "priority": 17,
+      "area": "readme",
+      "title": "Rewrite README as a professional usage guide",
+      "user_visible_behavior": "A new user can understand what my-harness is, install or test a version, run the core commands, inspect features, and see current limitations from the README.",
+      "status": "passing",
+      "verification": [
+        "Replace version-only README structure with professional overview and usage guide",
+        "Document requirements, quick start, GitHub npx version install, features, commands, layout, verification, version timeline, deferred work, and roadmap",
+        "Run harness check after the README update"
+      ],
+      "evidence": [
+        "2026-07-19: README.md rewritten as a professional feature and usage guide",
+        "2026-07-19: python -m json.tool harness\\features.json passed",
+        "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active passed"
+      ],
+      "notes": "Documentation-only polish. No CLI behavior changed."
     }
   ]
 }

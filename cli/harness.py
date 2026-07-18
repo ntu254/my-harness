@@ -53,6 +53,7 @@ RUN_STATUSES = {"in_progress", "completed", "failed", "blocked", "needs_human"}
 ADAPTER_AVAILABILITY = {"present", "missing", "unknown", "inactive"}
 ADAPTER_TRUST = {"project_declared", "user_declared", "verified_local"}
 COMMAND_MODES = {"shell", "argv"}
+VERIFICATION_MODES = {"shell", "argv", "native"}
 
 ADAPTER_PRESETS: dict[str, dict[str, str]] = {
     "mock-python": {
@@ -66,6 +67,12 @@ ADAPTER_PRESETS: dict[str, dict[str, str]] = {
         "executable": "python",
         "version_command": "python --version",
         "notes": "Local smoke adapter that never sends prompts to an external model.",
+        "capabilities_json": json.dumps(["echo", "demo"]),
+        "max_prompt_length": "1000000",
+        "supports_raw_prompt": "True",
+        "supports_templates": "True",
+        "supports_argv": "True",
+        "verification_mode": "argv",
     },
     "codex-local": {
         "id": "codex-local",
@@ -78,6 +85,12 @@ ADAPTER_PRESETS: dict[str, dict[str, str]] = {
         "executable": "codex",
         "version_command": "codex --version",
         "notes": "Codex CLI preset. Verify locally before use; flags may vary by installed version.",
+        "capabilities_json": json.dumps(["code-generation", "code-analysis", "refactor"]),
+        "max_prompt_length": "4000",
+        "supports_raw_prompt": "False",
+        "supports_templates": "True",
+        "supports_argv": "True",
+        "verification_mode": "argv",
     },
     "claude-local": {
         "id": "claude-local",
@@ -90,6 +103,12 @@ ADAPTER_PRESETS: dict[str, dict[str, str]] = {
         "executable": "claude",
         "version_command": "claude --version",
         "notes": "Claude CLI preset. Verify locally before use; flags may vary by installed version.",
+        "capabilities_json": json.dumps(["code-generation", "code-analysis", "refactor", "review"]),
+        "max_prompt_length": "100000",
+        "supports_raw_prompt": "False",
+        "supports_templates": "True",
+        "supports_argv": "True",
+        "verification_mode": "argv",
     },
 }
 
@@ -580,6 +599,13 @@ def cmd_evidence_add(args: argparse.Namespace) -> None:
 
 def cmd_adapter_register(args: argparse.Namespace) -> None:
     ensure_db()
+    capabilities_json = getattr(args, "capabilities", None) or "[]"
+    if isinstance(capabilities_json, str):
+        if not capabilities_json.startswith("["):
+            capabilities_json = json.dumps([c.strip() for c in capabilities_json.split(",")])
+    else:
+        capabilities_json = json.dumps(capabilities_json)
+
     values = {
         "id": args.id,
         "provider": args.provider,
@@ -591,6 +617,14 @@ def cmd_adapter_register(args: argparse.Namespace) -> None:
         "executable": args.executable,
         "version_command": args.version_command,
         "notes": args.notes,
+        "capabilities_json": capabilities_json,
+        "max_prompt_length": getattr(args, "max_prompt_length", 100000),
+        "supports_raw_prompt": getattr(args, "supports_raw_prompt", False),
+        "supports_templates": getattr(args, "supports_templates", True),
+        "supports_argv": getattr(args, "supports_argv", True),
+        "verification_mode": validate_choice(
+            getattr(args, "verification_mode", "shell"), VERIFICATION_MODES, "verification-mode"
+        ),
     }
     if values["command_mode"] == "argv" and not values["command_argv_json"]:
         raise SystemExit("--command-argv-json is required when --command-mode argv")
@@ -599,10 +633,14 @@ def cmd_adapter_register(args: argparse.Namespace) -> None:
             """
             INSERT INTO agent_adapter
               (id, provider, command_template, availability, trust_level,
-               executable, version_command, command_mode, command_argv_json, notes)
+               executable, version_command, command_mode, command_argv_json, notes,
+               capabilities_json, max_prompt_length, supports_raw_prompt, supports_templates,
+               supports_argv, verification_mode)
             VALUES
               (:id, :provider, :command_template, :availability, :trust_level,
-               :executable, :version_command, :command_mode, :command_argv_json, :notes)
+               :executable, :version_command, :command_mode, :command_argv_json, :notes,
+               :capabilities_json, :max_prompt_length, :supports_raw_prompt, :supports_templates,
+               :supports_argv, :verification_mode)
             ON CONFLICT(id) DO UPDATE SET
               provider = excluded.provider,
               command_template = excluded.command_template,
@@ -612,7 +650,13 @@ def cmd_adapter_register(args: argparse.Namespace) -> None:
               version_command = excluded.version_command,
               command_mode = excluded.command_mode,
               command_argv_json = excluded.command_argv_json,
-              notes = excluded.notes
+              notes = excluded.notes,
+              capabilities_json = excluded.capabilities_json,
+              max_prompt_length = excluded.max_prompt_length,
+              supports_raw_prompt = excluded.supports_raw_prompt,
+              supports_templates = excluded.supports_templates,
+              supports_argv = excluded.supports_argv,
+              verification_mode = excluded.verification_mode
             """,
             values,
         )
@@ -633,15 +677,29 @@ def cmd_adapter_register(args: argparse.Namespace) -> None:
 
 
 def register_adapter_values(values: dict[str, Any]) -> None:
+    ensure_defaults = {
+        "capabilities_json": values.get("capabilities_json", "[]"),
+        "max_prompt_length": int(values.get("max_prompt_length", 100000)),
+        "supports_raw_prompt": str(values.get("supports_raw_prompt", "False")) in ("True", "true", "1"),
+        "supports_templates": str(values.get("supports_templates", "True")) in ("True", "true", "1"),
+        "supports_argv": str(values.get("supports_argv", "True")) in ("True", "true", "1"),
+        "verification_mode": values.get("verification_mode", "shell"),
+    }
+    values.update(ensure_defaults)
+
     with connect() as conn:
         conn.execute(
             """
             INSERT INTO agent_adapter
               (id, provider, command_template, availability, trust_level,
-               executable, version_command, command_mode, command_argv_json, notes)
+               executable, version_command, command_mode, command_argv_json, notes,
+               capabilities_json, max_prompt_length, supports_raw_prompt, supports_templates,
+               supports_argv, verification_mode)
             VALUES
               (:id, :provider, :command_template, :availability, :trust_level,
-               :executable, :version_command, :command_mode, :command_argv_json, :notes)
+               :executable, :version_command, :command_mode, :command_argv_json, :notes,
+               :capabilities_json, :max_prompt_length, :supports_raw_prompt, :supports_templates,
+               :supports_argv, :verification_mode)
             ON CONFLICT(id) DO UPDATE SET
               provider = excluded.provider,
               command_template = excluded.command_template,
@@ -651,7 +709,13 @@ def register_adapter_values(values: dict[str, Any]) -> None:
               version_command = excluded.version_command,
               command_mode = excluded.command_mode,
               command_argv_json = excluded.command_argv_json,
-              notes = excluded.notes
+              notes = excluded.notes,
+              capabilities_json = excluded.capabilities_json,
+              max_prompt_length = excluded.max_prompt_length,
+              supports_raw_prompt = excluded.supports_raw_prompt,
+              supports_templates = excluded.supports_templates,
+              supports_argv = excluded.supports_argv,
+              verification_mode = excluded.verification_mode
             """,
             values,
         )
@@ -769,6 +833,37 @@ def cmd_adapter_discover(args: argparse.Namespace) -> None:
                     "version": version_output,
                 }
             )
+    emit(results, args.json)
+
+
+def cmd_adapter_capability(args: argparse.Namespace) -> None:
+    require_db()
+    with connect() as conn:
+        if args.adapter:
+            rows = conn.execute("SELECT * FROM agent_adapter WHERE id = ?", (args.adapter,)).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM agent_adapter ORDER BY id").fetchall()
+    results: list[dict[str, Any]] = []
+    for row in rows:
+        row_dict_val = row_dict(row)
+        try:
+            capabilities = json.loads(row_dict_val.get("capabilities_json") or "[]")
+        except json.JSONDecodeError:
+            capabilities = []
+        results.append(
+            {
+                "adapter_id": row_dict_val["id"],
+                "provider": row_dict_val["provider"],
+                "capabilities": capabilities,
+                "max_prompt_length": row_dict_val.get("max_prompt_length", 100000),
+                "supports_raw_prompt": bool(row_dict_val.get("supports_raw_prompt")),
+                "supports_templates": bool(row_dict_val.get("supports_templates")),
+                "supports_argv": bool(row_dict_val.get("supports_argv")),
+                "verification_mode": row_dict_val.get("verification_mode", "shell"),
+                "trust_level": row_dict_val["trust_level"],
+                "availability": row_dict_val["availability"],
+            }
+        )
     emit(results, args.json)
 
 
@@ -1175,7 +1270,16 @@ def build_parser() -> argparse.ArgumentParser:
     adapter_register.add_argument("--executable")
     adapter_register.add_argument("--version-command")
     adapter_register.add_argument("--notes")
+    adapter_register.add_argument("--capabilities", help="comma-separated list of capabilities or JSON array")
+    adapter_register.add_argument("--max-prompt-length", type=int, default=100000)
+    adapter_register.add_argument("--supports-raw-prompt", action="store_true", default=False)
+    adapter_register.add_argument("--supports-templates", action="store_true", default=True)
+    adapter_register.add_argument("--supports-argv", action="store_true", default=True)
+    adapter_register.add_argument("--verification-mode", default="shell")
     adapter_register.set_defaults(func=cmd_adapter_register)
+    adapter_capability = adapter_sub.add_parser("capability", help="query adapter capabilities and limits")
+    adapter_capability.add_argument("--adapter")
+    adapter_capability.set_defaults(func=cmd_adapter_capability)
     adapter_preset = adapter_sub.add_parser("preset", help="install or list adapter presets")
     adapter_preset.add_argument("name", help="preset name, 'all', or 'list'")
     adapter_preset.set_defaults(func=cmd_adapter_preset)

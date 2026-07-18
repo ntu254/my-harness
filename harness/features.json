@@ -372,6 +372,31 @@
         "2026-07-19: v0.10.2 updates the installer checkout path to avoid annotated-tag checkout noise"
       ],
       "notes": "This is a release/install experience patch. It is not the v0.11 authority/protocol hardening slice and it is not the v0.12 project-pack adoption command."
+    },
+    {
+      "id": "MH-016",
+      "priority": 16,
+      "area": "v0.10.3",
+      "title": "Harden adapter and route contracts after professional review",
+      "user_visible_behavior": "The standard test suite now catches more adapter execution and routing regressions before v0.11 authority/protocol work begins.",
+      "status": "passing",
+      "verification": [
+        "Confirm the attached review's failing-test claim against the current repo",
+        "Add adapter contract tests for argv execution, raw prompt guard, and preset capability metadata",
+        "Add route contract tests for deterministic, tiny, high-risk, and approval-required decisions",
+        "Run the new tests, full unittest discovery, npm package check, and harness check"
+      ],
+      "evidence": [
+        "2026-07-19: python -m unittest discover -s tests -p \"test_*.py\" passed before new tests, so the review's failing evidence freshness claim was stale",
+        "2026-07-19: tests/test_professional_review_contracts.py added 7 adapter/route contract tests",
+        "2026-07-19: python -m unittest tests.test_professional_review_contracts -v passed 7 tests",
+        "2026-07-19: python -m unittest discover -s tests -p \"test_*.py\" passed 11 tests",
+        "2026-07-19: npm run check passed with 11 tests",
+        "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active passed",
+        "2026-07-19: npm pack --dry-run produced @ntu254/my-harness@0.10.3 with 79 source/doc/test files",
+        "2026-07-19: harness check now requires tests/test_professional_review_contracts.py"
+      ],
+      "notes": "This absorbs the highest-ROI test coverage recommendation from the professional review. Large modularization and real provider conformance remain deferred."
     }
   ]
 }

@@ -106,6 +106,13 @@ proven.
 - Quieter install checkout for annotated Git tags after `v0.10.1` verified that
   `npx github:ntu254/my-harness#v0.10.1` can install `v0.2.0`.
 
+## What v0.10.3 Adds
+
+- Professional-review contract tests for adapter execution and route decisions.
+- Coverage for argv prompt-file execution, raw prompt blocking, preset
+  capability metadata, deterministic routing, approval-required routing,
+  high-risk routing, and tiny-lane routing.
+
 ## Still Deferred
 
 - No multi-agent orchestration.

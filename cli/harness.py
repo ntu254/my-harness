@@ -919,6 +919,7 @@ def check_required_files() -> list[dict[str, Any]]:
         "schemas/route-decision.schema.json",
         "schemas/final-report.schema.json",
         "tests/test_cli_contracts.py",
+        "tests/test_professional_review_contracts.py",
         "ANALYSIS_CROSS_REPO_IDEAS.md",
         "docs/INDEX.md",
         "docs/CONTRACTS.md",

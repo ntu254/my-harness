@@ -545,3 +545,48 @@ readiness before provider adapters.
     polished Releases page.
 - Best next step: verify the launcher, backfill version tags, commit the release
   install slice, then push tags/code if credentials allow.
+
+### Session 015
+
+- Date: 2026-07-19
+- Goal: Act on the attached professional review by verifying its claims and
+  adding high-ROI contract coverage.
+- Review reconciliation:
+  - The review's claim that `test_completion_requires_fresh_evidence` was
+    failing is stale. Current baseline passed before new work.
+  - The review's broader testing concern is valid: 4 contract tests were too
+    few for the current adapter/routing surface.
+  - Large `cli/harness.py` modularization is valid but deferred until after
+    v0.11 authority/protocol hardening to avoid moving behavior before public
+    contracts are tighter.
+- Completed:
+  - Added `tests/test_professional_review_contracts.py`.
+  - Covered argv adapter prompt-file execution, raw `{prompt}` shell guard,
+    preset capability metadata, deterministic route output,
+    approval-required routing, high-risk routing, and tiny-lane routing.
+  - Added the new test file to `harness check` required files.
+  - Bumped package/manifest docs to v0.10.3.
+- Verification executed:
+  - `python -m unittest discover -s tests -p "test_*.py"` before changes:
+    4 tests passed.
+  - `.\harness\harness.ps1 check --include-active --strict-active` before
+    changes: passed.
+  - `python -m unittest tests.test_professional_review_contracts -v`: 7 tests
+    passed.
+  - `python -m unittest discover -s tests -p "test_*.py"`: 11 tests passed.
+  - `npm run check`: passed with 11 tests.
+  - `.\harness\harness.ps1 check --include-active --strict-active`: passed.
+  - `npm pack --dry-run`: produced a clean 79-file package for v0.10.3.
+- Evidence recorded:
+  - `tests/test_professional_review_contracts.py`
+  - `harness/features.json`
+  - `harness/progress.md`
+  - `README.md`
+  - `AGENTS.md`
+  - `harness.yaml`
+- Known risks:
+  - Real Claude/Codex provider conformance remains deferred.
+  - `cli/harness.py` is still large and should be modularized after command
+    contracts and authority boundaries are stable.
+- Best next step: run full verification, then continue v0.11 authority and
+  protocol hardening.

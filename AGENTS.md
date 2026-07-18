@@ -36,6 +36,7 @@ Prefer durable repository artifacts over chat-only summaries.
 - v0.7: adapter capability taxonomy and verification metadata.
 - v0.8: `route`, skill/tool/capability resolver, human gate records, benchmarks.
 - v0.9: `report final`, `complete`, evidence freshness, scoped approvals, and benchmark scores.
+- v0.10: schema contracts, CLI contract tests, and `check`-level regression coverage.
 
 Update this section only after the capability exists in the repository and the
 required verification has passed. Planned or aspirational work belongs in the

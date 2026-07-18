@@ -1,6 +1,6 @@
 schema_version: 0.1
 name: my-harness
-version: 0.6.0
+version: 0.10.0
 principle: "Use the smallest process that safely proves the work."
 lanes:
   - tiny
@@ -29,3 +29,4 @@ docs:
   runner: docs/RUNNER.md
   adapters: docs/ADAPTERS.md
   checks: docs/CHECKS.md
+  contracts: docs/CONTRACTS.md

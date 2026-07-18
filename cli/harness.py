@@ -899,6 +899,12 @@ def check_required_files() -> list[dict[str, Any]]:
         "state/schema/007-core-gates.sql",
         "harness/skills.json",
         "harness/benchmarks.json",
+        "schemas/skill.schema.json",
+        "schemas/benchmark.schema.json",
+        "schemas/route-decision.schema.json",
+        "schemas/final-report.schema.json",
+        "tests/test_cli_contracts.py",
+        "docs/CONTRACTS.md",
         "docs/GATES.md",
         "templates/prompts/adapter-smoke.md",
     ]
@@ -931,7 +937,14 @@ def cmd_check(args: argparse.Namespace) -> None:
     checks.extend(
         [
             check_command("features.json parses", "python -m json.tool harness/features.json", args.timeout),
+            check_command("skills.json parses", "python -m json.tool harness/skills.json", args.timeout),
+            check_command("benchmarks.json parses", "python -m json.tool harness/benchmarks.json", args.timeout),
+            check_command("skill schema parses", "python -m json.tool schemas/skill.schema.json", args.timeout),
+            check_command("benchmark schema parses", "python -m json.tool schemas/benchmark.schema.json", args.timeout),
+            check_command("route schema parses", "python -m json.tool schemas/route-decision.schema.json", args.timeout),
+            check_command("final report schema parses", "python -m json.tool schemas/final-report.schema.json", args.timeout),
             check_command("cli compiles", "python -m py_compile cli/harness.py", args.timeout),
+            check_command("cli contract tests", 'python -m unittest discover -s tests -p "test_*.py"', args.timeout),
             check_command("git diff whitespace", "git diff --check", args.timeout),
         ]
     )

@@ -300,6 +300,27 @@
         "2026-07-19: bench run passed 5/5 and reported quality/cost/adaptiveness/durability scores"
       ],
       "notes": "v0.9 prepares v1.0 by hardening completion semantics. Provider transforms and multi-agent orchestration remain deferred."
+    },
+    {
+      "id": "MH-013",
+      "priority": 13,
+      "area": "v0.10",
+      "title": "Add contract schemas and CLI regression tests",
+      "user_visible_behavior": "The harness exposes documented JSON contracts and catches route, approval, completion, and benchmark regressions through the standard check command.",
+      "status": "passing",
+      "verification": [
+        "Add JSON schema contracts for skills, benchmarks, route decisions, and final reports",
+        "Run CLI contract tests against a temporary MY_HARNESS_DB",
+        "Run harness check and confirm contract tests are part of the baseline",
+        "Confirm README and harness manifest describe the verified v0.10 surface"
+      ],
+      "evidence": [
+        "2026-07-19: schemas/skill.schema.json, schemas/benchmark.schema.json, schemas/route-decision.schema.json, and schemas/final-report.schema.json added",
+        "2026-07-19: python -m unittest discover -s tests -p \"test_*.py\" passed 4 tests",
+        "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active passed with CLI contract tests included",
+        "2026-07-19: README.md and harness.yaml updated for v0.10"
+      ],
+      "notes": "v0.10 hardens v1.0 readiness without introducing real provider adapters or multi-agent orchestration."
     }
   ]
 }

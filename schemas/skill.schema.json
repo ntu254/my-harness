@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/my-harness/skill.schema.json",
+  "title": "my-harness skill registry",
+  "type": "object",
+  "required": ["version", "description", "skills"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string" },
+    "description": { "type": "string" },
+    "skills": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "lanes",
+          "description",
+          "required_capabilities",
+          "optional_capabilities",
+          "gate_policy"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "category": { "type": "string", "minLength": 1 },
+          "lanes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": ["tiny", "normal", "high_risk", "approval_required"]
+            }
+          },
+          "description": { "type": "string", "minLength": 1 },
+          "required_capabilities": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "optional_capabilities": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "gate_policy": {
+            "type": "string",
+            "enum": ["auto", "warn-on-gap", "block", "block-on-gap"]
+          }
+        }
+      }
+    }
+  }
+}

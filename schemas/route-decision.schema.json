@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/my-harness/route-decision.schema.json",
+  "title": "my-harness route decision",
+  "type": "object",
+  "required": [
+    "summary",
+    "lane",
+    "workflow",
+    "skills",
+    "required_capabilities",
+    "optional_capabilities",
+    "available_tools",
+    "candidate_tools",
+    "missing_capabilities",
+    "missing_required_capabilities",
+    "missing_optional_capabilities",
+    "proof_policy",
+    "weak_proof",
+    "human_gate_required",
+    "rationale"
+  ],
+  "properties": {
+    "summary": { "type": "string" },
+    "lane": { "type": "string", "enum": ["tiny", "normal", "high_risk", "approval_required"] },
+    "workflow": { "type": "string" },
+    "skills": { "type": "array", "items": { "type": "string" } },
+    "required_capabilities": { "type": "array", "items": { "type": "string" } },
+    "optional_capabilities": { "type": "array", "items": { "type": "string" } },
+    "available_tools": { "type": "array" },
+    "candidate_tools": { "type": "array" },
+    "missing_capabilities": { "type": "array", "items": { "type": "string" } },
+    "missing_required_capabilities": { "type": "array", "items": { "type": "string" } },
+    "missing_optional_capabilities": { "type": "array", "items": { "type": "string" } },
+    "proof_policy": { "type": "string", "enum": ["pass", "warn", "block"] },
+    "weak_proof": { "type": "boolean" },
+    "human_gate_required": { "type": "boolean" },
+    "rationale": { "type": "object" },
+    "route_id": { "type": "integer" }
+  }
+}

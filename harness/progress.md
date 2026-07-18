@@ -451,3 +451,31 @@ readiness before provider adapters.
 - Known risks:
   - None for this documentation-only alignment.
 - Best next step: continue v1.0 readiness work after confirming `AGENTS.md` remains aligned with v0.1-v0.9 behavior.
+
+### Session 012
+
+- Date: 2026-07-19
+- Goal: Improve v1.0 readiness with contract schemas and CLI regression tests.
+- Completed:
+  - Added JSON schema contracts for skill registry, benchmark registry, route decisions, and final reports.
+  - Added `tests/test_cli_contracts.py` using a temporary `MY_HARNESS_DB`.
+  - Covered UI proof blocking, approval scope validation, completion evidence gates, and benchmark score output.
+  - Wired CLI contract tests and schema parsing into `harness check`.
+  - Updated README and `harness.yaml` to reflect v0.10 hardening.
+  - Added `docs/CONTRACTS.md`, `harness/v0.10-plan.md`, and `harness/v0.10-acceptance.md`.
+  - Updated `harness/features.json` with `MH-013`.
+- Verification executed:
+  - `.\harness\harness.ps1 init`
+  - `python -m unittest discover -s tests -p "test_*.py"`
+  - `.\harness\harness.ps1 check --include-active --strict-active`
+- Evidence recorded:
+  - `tests/test_cli_contracts.py`
+  - `schemas/*.schema.json`
+  - `docs/CONTRACTS.md`
+  - `harness/v0.10-acceptance.md`
+  - `harness/features.json`
+- Known risks:
+  - Schemas parse successfully but are not yet enforced by a full JSON Schema validator.
+  - Contract tests cover core controller paths, not every CLI command.
+  - Provider adapter conformance, project-pack adoption, and real agent-output benchmarks remain deferred.
+- Best next step: add project-pack/adoption workflow or schema validation before declaring v1.0 stable.

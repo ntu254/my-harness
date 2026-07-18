@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/my-harness/final-report.schema.json",
+  "title": "my-harness final report",
+  "type": "object",
+  "required": [
+    "story",
+    "status",
+    "blockers",
+    "warnings",
+    "route",
+    "approval",
+    "evidence_ids",
+    "stale_evidence",
+    "skipped_checks",
+    "git_head",
+    "dirty_files"
+  ],
+  "properties": {
+    "story": {
+      "type": "object",
+      "required": ["id", "title", "lane", "status", "revision"]
+    },
+    "status": { "type": "string", "enum": ["pass", "blocked", "weak"] },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "route": { "type": "object" },
+    "approval": { "type": "object" },
+    "evidence_ids": { "type": "array", "items": { "type": "integer" } },
+    "stale_evidence": { "type": "array" },
+    "skipped_checks": { "type": "array", "items": { "type": "string" } },
+    "residual_risk": { "type": ["string", "null"] },
+    "rollback_info": { "type": ["string", "null"] },
+    "git_head": { "type": ["string", "null"] },
+    "dirty_files": { "type": "array" },
+    "completion_report_id": { "type": "integer" },
+    "completed": { "type": "boolean" }
+  }
+}

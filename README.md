@@ -5,14 +5,15 @@
 It helps agents classify work, select the right context, choose an appropriate
 workflow, verify changes, and leave durable handoff state for the next session.
 
-The v0.1 principle:
+The core principle:
 
 ```text
 Use the smallest process that safely proves the work.
 ```
 
-v0.1 is intentionally manual: it proves the operating loop before adding CLI,
-SQLite, or multi-agent automation.
+The early versions kept the process deliberately small, then added state,
+routing, adapters, gates, and contract tests only after the continuity loop was
+proven.
 
 ## What v0.1 Includes
 
@@ -61,14 +62,47 @@ SQLite, or multi-agent automation.
 - Runtime recording of command mode and rendered argv.
 - A reusable adapter smoke prompt template.
 
-## What v0.1 Deferred
+## What v0.7 Adds
+
+- Adapter capability taxonomy.
+- Capability queries through `adapter capability`.
+- Verification metadata for adapter limits and modes.
+
+## What v0.8 Adds
+
+- Deterministic `route` command for workflow, skill, capability, and proof
+  decisions.
+- Tool capability registry and `tool seed`.
+- Human approval request/resolve records.
+- Route benchmark fixtures and `bench run`.
+
+## What v0.9 Adds
+
+- `report final` and `complete` completion gates.
+- Evidence freshness checks tied to git head and dirty state.
+- Required vs optional proof gaps.
+- Scoped approval expiry and approval validation.
+- Benchmark scores for quality, cost, adaptiveness, and durability.
+
+## What v0.10 Adds
+
+- JSON schema contracts for skills, benchmarks, route decisions, and final
+  reports.
+- `unittest` CLI contract tests that run against a temporary database.
+- `harness check` now runs contract tests as part of the baseline.
+- README/manifest alignment with the verified capability surface.
+
+## Still Deferred
 
 - No multi-agent orchestration.
-- No provider-specific build system.
+- No real Codex/Claude provider conformance suite yet.
 - No live UI variant mode.
+- No installer/project-pack adoption command yet.
+- No real agent-output benchmark scoring yet.
 
-The CLI and SQLite state spine arrived in v0.2. Orchestration and provider
-adapters come after the state spine proves useful on real work.
+The CLI and SQLite state spine are in place. Provider adapters, multi-agent
+orchestration, and live UI iteration come after the single-agent controller
+contracts are stable.
 
 ## Start
 
@@ -80,6 +114,7 @@ On Windows:
 .\harness\harness.ps1 run once --help
 .\harness\harness.ps1 check --include-active --strict-active
 .\harness\harness.ps1 adapter preset list
+python -m unittest discover -s tests -p "test_*.py"
 ```
 
 On macOS/Linux:
@@ -90,6 +125,7 @@ bash harness/harness.sh query active
 bash harness/harness.sh run once --help
 bash harness/harness.sh check --include-active --strict-active
 bash harness/harness.sh adapter preset list
+python -m unittest discover -s tests -p "test_*.py"
 ```
 
 Then read:
@@ -101,7 +137,8 @@ Then read:
 5. `docs/RUNNER.md` when executing orchestrated local tasks
 6. `docs/ADAPTERS.md` when registering Claude, Codex, or local adapters
 7. `docs/CHECKS.md` before closing a version
-8. The workflow doc that matches the request
+8. `docs/CONTRACTS.md` before changing public command output shapes
+9. The workflow doc that matches the request
 
 ## Completion Rule
 

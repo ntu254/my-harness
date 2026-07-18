@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/my-harness/benchmark.schema.json",
+  "title": "my-harness benchmark registry",
+  "type": "object",
+  "required": ["suite", "description", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "suite": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "summary",
+          "intent",
+          "work_type",
+          "scope",
+          "uncertainty",
+          "reversibility",
+          "risk",
+          "process_budget",
+          "expected_lane",
+          "expected_skills"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "summary": { "type": "string", "minLength": 1 },
+          "intent": { "type": "string" },
+          "work_type": { "type": "string" },
+          "scope": { "type": "string" },
+          "uncertainty": { "type": "string" },
+          "reversibility": { "type": "string" },
+          "risk": { "type": "string" },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "requires": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "process_budget": { "type": "integer", "minimum": 0 },
+          "expected_lane": {
+            "type": "string",
+            "enum": ["tiny", "normal", "high_risk", "approval_required"]
+          },
+          "expected_skills": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

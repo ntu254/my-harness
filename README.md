@@ -48,7 +48,7 @@ Python standard library and SQLite.
 
 ## Quick Start
 
-Windows:
+### Windows PowerShell
 
 ```powershell
 git clone https://github.com/ntu254/my-harness.git
@@ -58,7 +58,33 @@ cd my-harness
 .\scripts\harness.ps1 query active
 ```
 
-macOS/Linux:
+If PowerShell blocks local scripts, allow locally created scripts for the current
+user, then open a new terminal:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+### Git Bash On Windows
+
+Git for Windows includes Git Bash. Run the POSIX wrapper from Git Bash:
+
+```bash
+git clone https://github.com/ntu254/my-harness.git
+cd my-harness
+bash scripts/init.sh
+bash scripts/harness.sh check --include-active --strict-active
+bash scripts/harness.sh query active
+```
+
+When `bash` in PowerShell opens WSL instead of Git Bash, either use the
+PowerShell wrapper above or call Git Bash explicitly:
+
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" scripts/harness.sh check --include-active --strict-active
+```
+
+### macOS/Linux
 
 ```bash
 git clone https://github.com/ntu254/my-harness.git
@@ -74,6 +100,112 @@ Run the package launcher from the repository:
 node .\bin\my-harness.js --json init
 node .\bin\my-harness.js check --include-active --strict-active
 ```
+
+## Cách Sử Dụng
+
+Phần này mô tả luồng dùng thực tế. Các ví dụ dùng PowerShell; với Git Bash,
+macOS hoặc Linux, thay `./scripts/harness.ps1` bằng
+`bash scripts/harness.sh`.
+
+### 1. Khởi tạo và kiểm tra
+
+Chạy một lần sau khi clone hoặc sau khi cập nhật mã nguồn:
+
+```powershell
+.\scripts\init.ps1
+.\scripts\harness.ps1 check --include-active --strict-active
+```
+
+`init` tạo cơ sở dữ liệu cục bộ tại `harness/harness.db`. `check` kiểm tra cấu
+trúc dự án, JSON/schema, Python, launcher, test contracts và trạng thái story
+đang hoạt động. Cơ sở dữ liệu và log runtime được Git bỏ qua.
+
+### 2. Phân loại một công việc
+
+Trước khi sửa code, dùng `route` để harness chọn lane, workflow, kỹ năng, công
+cụ và mức bằng chứng cần thiết:
+
+```powershell
+.\scripts\harness.ps1 route --json --persist `
+  --summary "Fix login regression" `
+  --work-type bugfix `
+  --scope module `
+  --risk medium
+```
+
+Thêm `--tag ui` cho công việc giao diện. Công việc deploy, xóa dữ liệu hoặc
+thay đổi không thể hoàn tác nên khai báo `--risk critical` và
+`--reversibility irreversible`; route sẽ yêu cầu phê duyệt của con người.
+
+### 3. Ghi nhận story và bằng chứng
+
+```powershell
+.\scripts\harness.ps1 --json story add --id BUG-001 --title "Fix login regression" --lane normal
+
+# Sửa code và chạy test của dự án, sau đó ghi lại kết quả:
+.\scripts\harness.ps1 --json evidence add `
+  --kind test `
+  --target BUG-001 `
+  --result pass `
+  --command "python -m unittest" `
+  --story BUG-001
+```
+
+Xem toàn bộ công việc đang mở:
+
+```powershell
+.\scripts\harness.ps1 --json query active
+```
+
+### 4. Chạy qua adapter
+
+Cài các preset và xem adapter nào có thể chạy trên máy:
+
+```powershell
+.\scripts\harness.ps1 --json adapter preset all
+.\scripts\harness.ps1 adapter discover
+.\scripts\harness.ps1 --json adapter conformance
+```
+
+`mock-python` luôn phù hợp để smoke test mà không gọi model bên ngoài:
+
+```powershell
+.\scripts\harness.ps1 --json adapter run `
+  --adapter mock-python `
+  --id SMOKE-001 `
+  --summary "Adapter smoke test" `
+  --prompt "Return a short hello" `
+  --verify-command "python --version" `
+  --timeout 30
+```
+
+`codex-local` và `claude-local` chỉ chạy khi CLI tương ứng đã được cài và đăng
+nhập trên máy. Dùng `adapter discover` để xác nhận executable trước khi chạy.
+
+### 5. Hoàn tất công việc
+
+Lấy `route-id` từ kết quả `route --persist`, tạo báo cáo cuối rồi chạy completion
+gate:
+
+```powershell
+.\scripts\harness.ps1 report final --json --story BUG-001 --route-id 1 --persist
+.\scripts\harness.ps1 complete --json --story BUG-001 --route-id 1
+```
+
+Nếu gate từ chối hoàn tất, đọc các proof gap trong JSON, bổ sung evidence hoặc
+approval được yêu cầu rồi chạy lại. Không sửa trạng thái story thủ công để bỏ
+qua gate.
+
+### Luồng ngắn hằng ngày
+
+```text
+init/check -> route --persist -> story add -> sửa code -> test
+           -> evidence add -> report final -> complete -> check
+```
+
+Hiện tại harness vận hành trực tiếp trong repository này. Lệnh tự động gắn một
+project pack vào repository khác (`harness adopt --target ...`) vẫn thuộc roadmap;
+đừng sao chép riêng `harness.db` vì đây là runtime state cục bộ.
 
 ## Try A Specific Version
 

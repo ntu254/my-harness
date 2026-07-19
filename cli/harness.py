@@ -390,6 +390,8 @@ def choose_skill_ids(lane: str, intent: str, work_type: str, scope: str, tags: l
     elif work_type in {"bugfix", "incident"}:
         add("systematic-debugging")
         add("regression-proof")
+    elif work_type in {"migration", "release"}:
+        add("spec-clarification")
     elif intent in {"read", "analyze", "plan"}:
         add("spec-clarification")
     else:
@@ -397,12 +399,15 @@ def choose_skill_ids(lane: str, intent: str, work_type: str, scope: str, tags: l
 
     if work_type in {"feature", "migration", "release", "harness_improvement"} and scope != "file":
         add("spec-clarification")
+        add("artifact-lifecycle")
     if intent in {"modify", "execute"} or work_type in {"refactor", "maintenance", "harness_improvement"}:
         add("code-quality-review")
     if {"ui", "frontend", "design", "accessibility"} & tag_set:
         add("design-quality-review")
     if lane in {"high_risk", "approval_required"}:
         add("high-risk-plan")
+    if work_type in {"migration", "release"}:
+        add("release-readiness")
     if lane == "approval_required":
         add("human-gate")
     return selected
@@ -924,6 +929,7 @@ def check_required_files() -> list[dict[str, Any]]:
         "docs/INDEX.md",
         "docs/CONTRACTS.md",
         "docs/RELEASE_INSTALL.md",
+        "docs/HARNESS_ENGINEERING_ADOPTION.md",
         "docs/decisions/ADR-001-state-store.md",
         "docs/GATES.md",
         "templates/prompts/adapter-smoke.md",
@@ -1444,6 +1450,10 @@ def cmd_tool_seed(args: argparse.Namespace) -> None:
         ("manual-browser-check", "browser-check", "manual:browser-check", "unknown", "Browser/UI verification when a UI exists."),
         ("manual-accessibility-check", "accessibility-check", "manual:accessibility-check", "unknown", "Accessibility review when a UI exists."),
         ("manual-visual-review", "visual-review", "manual:visual-review", "unknown", "Visual QA evidence when a UI exists."),
+        ("manual-artifact-contract-check", "artifact-contract-check", "manual:artifact-contract-check", "unknown", "Validate spec/plan artifact contracts when enabled."),
+        ("manual-documentation-check", "documentation-check", "manual:documentation-check", "present", "Check durable docs and indexes for workflow changes."),
+        ("manual-post-release-check", "post-release-check", "manual:post-release-check", "unknown", "Post-release verification checklist when release work exists."),
+        ("manual-monitoring-check", "monitoring-check", "manual:monitoring-check", "unknown", "Monitoring or health verification when operational work exists."),
     ]
     for tool_id, capability, command, availability, notes in manual_tools:
         values = {

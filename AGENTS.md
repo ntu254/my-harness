@@ -4,7 +4,7 @@ This repository is designed for long-running coding-agent work. The goal is not
 to maximize raw code output. The goal is to leave the repository in a state
 where the next session can continue without guessing.
 
-This repository uses `my-harness` through v0.10.3. The harness is the control layer
+This repository uses `my-harness` through v0.10.4. The harness is the control layer
 agents touch; the app or target repository is what users touch.
 
 Use the smallest process that safely proves the work. Tiny work must stay
@@ -42,6 +42,8 @@ Prefer durable repository artifacts over chat-only summaries.
   historical tag install testing.
 - v0.10.2: quieter launcher install checkout for annotated Git tags.
 - v0.10.3: professional-review contract tests for adapter and route behavior.
+- v0.10.4: harness-engineering adoption guidance, artifact-lifecycle routing,
+  and release-readiness routing.
 
 Update this section only after the capability exists in the repository and the
 required verification has passed. Planned or aspirational work belongs in the
@@ -215,5 +217,6 @@ Open Design wholesale. For v1.0, use craft/rubric thinking lightly:
 - Do not introduce multi-agent orchestration before the single-agent core is
   stable.
 - Do not copy full Open Design daemon/UI/plugin architecture into this repo.
+- Do not copy full Harness Engineering skill-tree ceremony into this repo.
 - Do not commit runtime state such as `harness/harness.db`, `harness/runs/`, or
   generated prompts.

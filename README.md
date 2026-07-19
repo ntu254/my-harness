@@ -13,7 +13,7 @@ Use the smallest process that safely proves the work.
 
 ## Current Status
 
-Current repository version: `0.10.3`.
+Current repository version: `0.10.4`.
 
 This is ready for personal, single-repository harness work. It is not yet a
 team/org harness, a real multi-agent scheduler, or a fully published npm
@@ -27,8 +27,9 @@ Verified surface:
   execution, adapter capabilities.
 - `v0.8-v0.9`: deterministic routing, tool resolver, human approvals,
   benchmark fixtures, final report and completion gates.
-- `v0.10-v0.10.3`: schema contracts, CLI regression tests, GitHub/npx launcher,
-  release/install docs, adapter and route contract coverage.
+- `v0.10-v0.10.4`: schema contracts, CLI regression tests, GitHub/npx launcher,
+  release/install docs, adapter and route contract coverage, and
+  harness-engineering artifact lifecycle guidance.
 
 Baseline verification currently runs `11` unittest contract tests through
 `harness check`.
@@ -85,13 +86,13 @@ cd my-harness-v0.2
 Use the GitHub `npx` launcher when you want a convenient installer experience:
 
 ```powershell
-npx --yes github:ntu254/my-harness#v0.10.3 install --version v0.2.0 --target .\my-harness-v0.2
+npx --yes github:ntu254/my-harness#v0.10.4 install --version v0.2.0 --target .\my-harness-v0.2
 ```
 
 Check the launcher version:
 
 ```powershell
-npx --yes github:ntu254/my-harness#v0.10.3 --package-version
+npx --yes github:ntu254/my-harness#v0.10.4 --package-version
 ```
 
 The npm package name is reserved in metadata as `@ntu254/my-harness`, but this
@@ -286,6 +287,7 @@ story state.
 | `v0.10.1` | GitHub/npx launcher and release/install docs |
 | `v0.10.2` | Quieter historical tag install checkout |
 | `v0.10.3` | Adapter and route contract coverage after professional review |
+| `v0.10.4` | Harness-engineering adoption guidance and artifact lifecycle routing |
 
 ## What Is Deferred
 

@@ -612,3 +612,45 @@ readiness before provider adapters.
     deferred.
 - Best next step: continue v0.11 authority and protocol hardening after README
   verification.
+
+### Session 017
+
+- Date: 2026-07-19
+- Goal: Absorb useful operating ideas from `E:\HESD\harness-engineering`
+  without copying its full ceremony.
+- Completed:
+  - Added `docs/HARNESS_ENGINEERING_ADOPTION.md` describing the reusable
+    artifact lifecycle, adoption model, spec/plan contracts, domain docs,
+    review fanout, GO/NO-GO release thinking, learn loop, and browser evidence
+    model.
+  - Added `artifact-lifecycle` and `release-readiness` to the skill registry.
+  - Updated routing so non-trivial feature/migration/release/harness-improvement
+    work receives lifecycle guidance while tiny file work stays lightweight.
+  - Added manual tool capability seeds for artifact-contract, documentation,
+    post-release, and monitoring checks.
+  - Updated README, AGENTS, manifest, docs index, benchmark expectations, and
+    feature state for v0.10.4.
+- Verification executed:
+  - `python -m json.tool harness\skills.json`
+  - `python -m json.tool harness\benchmarks.json`
+  - `python -m json.tool harness\features.json`
+  - `python -m py_compile cli\harness.py`
+  - `python -m unittest discover -s tests -p "test_*.py"`
+  - `npm run check`
+  - `.\harness\harness.ps1 bench run --json --fail-on-regression`
+  - `.\harness\harness.ps1 route --json ... maintenance file`
+  - `.\harness\harness.ps1 route --json ... critical external migration`
+  - `.\harness\harness.ps1 check --include-active --strict-active`
+- Evidence recorded:
+  - `docs/HARNESS_ENGINEERING_ADOPTION.md`
+  - `harness/skills.json`
+  - `cli/harness.py`
+  - `harness/benchmarks.json`
+  - `tests/test_professional_review_contracts.py`
+  - `harness/features.json`
+- Known risks:
+  - Full project-pack adoption, artifact contract checker, review fanout,
+    verify-release decision records, and learn loop automation are still future
+    slices.
+- Best next step: run full verification, then continue v0.11 authority and
+  protocol hardening.

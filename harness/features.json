@@ -416,6 +416,35 @@
         "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active passed"
       ],
       "notes": "Documentation-only polish. No CLI behavior changed."
+    },
+    {
+      "id": "MH-018",
+      "priority": 18,
+      "area": "v0.10.4",
+      "title": "Absorb harness-engineering artifact lifecycle patterns",
+      "user_visible_behavior": "The harness documents how harness-engineering maps into my-harness and routes non-trivial feature/release work through lightweight artifact-lifecycle skills without changing tiny-lane behavior.",
+      "status": "passing",
+      "verification": [
+        "Add harness-engineering adoption guidance",
+        "Add artifact-lifecycle and release-readiness skills",
+        "Route non-trivial feature, migration, release, and harness-improvement work to the new skills",
+        "Preserve exact tiny-lane routing behavior",
+        "Run JSON parse checks, CLI contract tests, npm check, and harness check"
+      ],
+      "evidence": [
+        "2026-07-19: docs/HARNESS_ENGINEERING_ADOPTION.md added",
+        "2026-07-19: harness/skills.json added artifact-lifecycle and release-readiness",
+        "2026-07-19: cli/harness.py routes non-trivial lifecycle work to the new skills and keeps tiny file changes lightweight",
+        "2026-07-19: tests/test_professional_review_contracts.py asserts approval-required migrations include the new governance skills",
+        "2026-07-19: python -m json.tool harness\\skills.json, harness\\benchmarks.json, and harness\\features.json passed",
+        "2026-07-19: python -m unittest discover -s tests -p \"test_*.py\" passed 11 tests",
+        "2026-07-19: npm run check passed with 11 tests",
+        "2026-07-19: .\\harness\\harness.ps1 bench run --json --fail-on-regression passed 5/5 route fixtures",
+        "2026-07-19: tiny maintenance route returned exactly tiny-change and code-quality-review",
+        "2026-07-19: critical external migration route returned artifact-lifecycle, release-readiness, and human-gate",
+        "2026-07-19: .\\harness\\harness.ps1 check --include-active --strict-active passed"
+      ],
+      "notes": "This absorbs principles only. Full project-pack adoption, artifact lint commands, review fanout, verify-release decisions, and learn loop automation remain future work."
     }
   ]
 }

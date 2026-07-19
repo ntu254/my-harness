@@ -1,6 +1,6 @@
 schema_version: 0.1
 name: my-harness
-version: 0.10.3
+version: 0.10.4
 principle: "Use the smallest process that safely proves the work."
 lanes:
   - tiny
@@ -32,6 +32,7 @@ docs:
   checks: docs/CHECKS.md
   contracts: docs/CONTRACTS.md
   release_install: docs/RELEASE_INSTALL.md
+  harness_engineering_adoption: docs/HARNESS_ENGINEERING_ADOPTION.md
   decisions: docs/decisions/
   cross_repo_ideas: ANALYSIS_CROSS_REPO_IDEAS.md
 package:

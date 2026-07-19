@@ -212,6 +212,8 @@ class HarnessProfessionalReviewContracts(unittest.TestCase):
         self.assertEqual(route["workflow"], "approval-first")
         self.assertTrue(route["human_gate_required"])
         self.assertEqual(route["proof_policy"], "block")
+        self.assertIn("artifact-lifecycle", route["skills"])
+        self.assertIn("release-readiness", route["skills"])
         self.assertIn("human-gate", route["skills"])
 
     def test_route_high_risk_for_costly_uncertain_infrastructure_work(self) -> None:

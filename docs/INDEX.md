@@ -32,6 +32,8 @@ history.
 - `docs/RELEASE_INSTALL.md`: Git tags, historical version testing, npx launcher,
   and npm publish checklist.
 - `docs/BENCHMARKS.md`: route benchmark fixtures and scoring.
+- `docs/HARNESS_ENGINEERING_ADOPTION.md`: lessons absorbed from
+  `harness-engineering` and how they map to future project-pack work.
 - `docs/TRACE.md`: trace and evidence recording.
 
 ## Quality

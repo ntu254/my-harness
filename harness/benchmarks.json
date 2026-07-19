@@ -39,7 +39,7 @@
       "risk": "high",
       "process_budget": 5,
       "expected_lane": "high_risk",
-      "expected_skills": ["spec-clarification", "high-risk-plan"]
+      "expected_skills": ["spec-clarification", "artifact-lifecycle", "high-risk-plan"]
     },
     {
       "id": "BENCH-UI-001",
@@ -53,7 +53,7 @@
       "tags": ["ui", "frontend"],
       "process_budget": 6,
       "expected_lane": "normal",
-      "expected_skills": ["normal-feature", "spec-clarification", "code-quality-review", "design-quality-review"]
+      "expected_skills": ["normal-feature", "spec-clarification", "artifact-lifecycle", "code-quality-review", "design-quality-review"]
     },
     {
       "id": "BENCH-GATE-001",
@@ -66,7 +66,7 @@
       "risk": "critical",
       "process_budget": 7,
       "expected_lane": "approval_required",
-      "expected_skills": ["high-risk-plan", "human-gate"]
+      "expected_skills": ["artifact-lifecycle", "high-risk-plan", "release-readiness", "human-gate"]
     }
   ]
 }

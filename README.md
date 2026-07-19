@@ -13,7 +13,7 @@ Use the smallest process that safely proves the work.
 
 ## Current Status
 
-Current repository version: `0.10.4`.
+Current repository version: `0.11.0`.
 
 This is ready for personal, single-repository harness work. It is not yet a
 team/org harness, a real multi-agent scheduler, or a fully published npm
@@ -30,8 +30,10 @@ Verified surface:
 - `v0.10-v0.10.4`: schema contracts, CLI regression tests, GitHub/npx launcher,
   release/install docs, adapter and route contract coverage, and
   harness-engineering artifact lifecycle guidance.
+- `v0.11.0`: adapter contract enforcement, schema validation checks, MIT
+  license metadata, optional adapter conformance, and packaged validation module.
 
-Baseline verification currently runs `11` unittest contract tests through
+Baseline verification currently runs `17` unittest contract tests through
 `harness check`.
 
 ## Requirements
@@ -86,18 +88,20 @@ cd my-harness-v0.2
 Use the GitHub `npx` launcher when you want a convenient installer experience:
 
 ```powershell
-npx --yes github:ntu254/my-harness#v0.10.4 install --version v0.2.0 --target .\my-harness-v0.2
+npx --yes github:ntu254/my-harness#v0.11.0 install --version v0.2.0 --target .\my-harness-v0.2
 ```
 
 Check the launcher version:
 
 ```powershell
-npx --yes github:ntu254/my-harness#v0.10.4 --package-version
+npx --yes github:ntu254/my-harness#v0.11.0 --package-version
 ```
 
 The npm package name is reserved in metadata as `@ntu254/my-harness`, but this
 package has not been published to npm yet. Until npm publish happens, use the
 GitHub `npx` form above.
+
+License: MIT.
 
 ## Core Features
 
@@ -182,6 +186,7 @@ Install and inspect presets:
 .\harness\harness.ps1 --json adapter preset all
 .\harness\harness.ps1 --json adapter capability
 .\harness\harness.ps1 adapter discover
+.\harness\harness.ps1 --json adapter conformance
 ```
 
 Run a task through an adapter:
@@ -195,8 +200,9 @@ Adapter safety rules:
 - `argv` mode is preferred where possible.
 - Raw `{prompt}` shell templates are blocked unless explicitly allowed.
 - Prompt files and run logs are written to ignored runtime directories.
-- Real provider conformance is still deferred; current tests use mock/local
-  contract paths.
+- Provider conformance is available as an optional local command. It checks
+  adapter metadata, executable discovery, and version commands without making
+  CI depend on Codex or Claude being installed.
 
 ### Human Approval Gates
 
@@ -288,12 +294,13 @@ story state.
 | `v0.10.2` | Quieter historical tag install checkout |
 | `v0.10.3` | Adapter and route contract coverage after professional review |
 | `v0.10.4` | Harness-engineering adoption guidance and artifact lifecycle routing |
+| `v0.11.0` | Adapter contract enforcement, schema validation checks, MIT license, optional conformance |
 
 ## What Is Deferred
 
 - No npm registry publish yet.
 - No `harness adopt --target <repo>` project-pack adoption command yet.
-- No real Claude/Codex provider conformance suite yet.
+- No mandatory Claude/Codex provider gate in baseline CI yet.
 - No live UI variant mode.
 - No autonomous multi-agent scheduler.
 - No real AI-output benchmark scoring yet.

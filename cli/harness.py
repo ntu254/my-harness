@@ -15,6 +15,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+try:
+    from schema_validation import validate_json_schema_subset
+except ModuleNotFoundError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from schema_validation import validate_json_schema_subset
+
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE_ROOT = Path(os.environ.get("MY_HARNESS_WORKSPACE", PACKAGE_ROOT)).resolve()
@@ -308,7 +314,7 @@ def run_argv(argv: list[str], timeout: int, cwd: Path | None = None) -> subproce
 
 def shell_quote(value: str) -> str:
     if os.name == "nt":
-        return subprocess.list2cmdline([value])
+        return subprocess.list2cmdline([value.replace("%", "^%")])
     return shlex.quote(value)
 
 
@@ -590,7 +596,7 @@ def write_prompt_file(story_id: str, prompt: str) -> str:
     return relative_text(path, WORKSPACE_ROOT)
 
 
-def read_prompt(args: argparse.Namespace) -> tuple[str, str | None]:
+def read_prompt(args: argparse.Namespace) -> tuple[str, str | None, str]:
     sources = [bool(args.prompt), bool(args.prompt_file), bool(getattr(args, "prompt_template", None))]
     if sum(sources) > 1:
         raise SystemExit("use only one of --prompt, --prompt-file, or --prompt-template")
@@ -601,14 +607,14 @@ def read_prompt(args: argparse.Namespace) -> tuple[str, str | None]:
         prompt = path.read_text(encoding="utf-8")
         for key, value in parse_prompt_vars(getattr(args, "prompt_vars", []) or []).items():
             prompt = prompt.replace("{{" + key + "}}", value)
-        return prompt, None
+        return prompt, None, "template"
     if args.prompt_file:
         path = resolve_resource_or_workspace_path(args.prompt_file)
         if not path.exists():
             raise SystemExit(f"prompt file not found: {path}")
-        return path.read_text(encoding="utf-8"), relative_text(path, WORKSPACE_ROOT)
+        return path.read_text(encoding="utf-8"), relative_text(path, WORKSPACE_ROOT), "file"
     if args.prompt:
-        return args.prompt, None
+        return args.prompt, None, "raw"
     raise SystemExit("adapter run requires --prompt or --prompt-file")
 
 
@@ -640,6 +646,27 @@ def adapter_command_values(args: argparse.Namespace, prompt: str, prompt_file: s
         "adapter_shell": shell_quote(args.adapter),
     }
     return values
+
+
+def bool_column(value: Any) -> bool:
+    return bool(int(value)) if isinstance(value, int) else str(value).lower() in {"1", "true", "yes"}
+
+
+def validate_adapter_contract(
+    adapter: sqlite3.Row,
+    command_mode: str,
+    prompt: str,
+    prompt_source: str,
+) -> None:
+    max_prompt_length = adapter["max_prompt_length"] or 100000
+    if len(prompt) > max_prompt_length:
+        raise SystemExit(
+            f"prompt length {len(prompt)} exceeds adapter max_prompt_length {max_prompt_length}: {adapter['id']}"
+        )
+    if prompt_source == "template" and not bool_column(adapter["supports_templates"]):
+        raise SystemExit(f"adapter does not support prompt templates: {adapter['id']}")
+    if command_mode == "argv" and not bool_column(adapter["supports_argv"]):
+        raise SystemExit(f"adapter does not support argv command mode: {adapter['id']}")
 
 
 def write_run_log(run_id: int, story_id: str, stage: str, command: str, result: subprocess.CompletedProcess[str]) -> str:
@@ -959,23 +986,49 @@ def check_command(name: str, command: str, timeout: int = 60, cwd: Path | None =
         return {"name": name, "status": "fail", "detail": f"timeout: {command}", "exit_code": None}
 
 
+def check_json_schema(name: str, data_path: Path, schema_path: Path) -> dict[str, Any]:
+    try:
+        data = json.loads(data_path.read_text(encoding="utf-8"))
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        errors = validate_json_schema_subset(data, schema)
+    except (OSError, json.JSONDecodeError) as exc:
+        return {"name": name, "status": "fail", "detail": str(exc)}
+    return {
+        "name": name,
+        "status": "pass" if not errors else "fail",
+        "detail": f"{data_path.relative_to(PACKAGE_ROOT)} against {schema_path.relative_to(PACKAGE_ROOT)}",
+        "errors": errors,
+    }
+
+
 def cmd_check(args: argparse.Namespace) -> None:
     applied = ensure_db()
     checks = check_required_files()
+    python = shell_quote(sys.executable)
     checks.extend(
         [
-            check_command("features.json parses", "python -m json.tool harness/features.json", args.timeout, cwd=PACKAGE_ROOT),
-            check_command("skills.json parses", "python -m json.tool harness/skills.json", args.timeout, cwd=PACKAGE_ROOT),
-            check_command("benchmarks.json parses", "python -m json.tool harness/benchmarks.json", args.timeout, cwd=PACKAGE_ROOT),
-            check_command("skill schema parses", "python -m json.tool schemas/skill.schema.json", args.timeout, cwd=PACKAGE_ROOT),
-            check_command("benchmark schema parses", "python -m json.tool schemas/benchmark.schema.json", args.timeout, cwd=PACKAGE_ROOT),
-            check_command("route schema parses", "python -m json.tool schemas/route-decision.schema.json", args.timeout, cwd=PACKAGE_ROOT),
-            check_command("final report schema parses", "python -m json.tool schemas/final-report.schema.json", args.timeout, cwd=PACKAGE_ROOT),
-            check_command("cli compiles", "python -m py_compile cli/harness.py", args.timeout, cwd=PACKAGE_ROOT),
-            check_command("cli contract tests", 'python -m unittest discover -s tests -p "test_*.py"', args.timeout, cwd=PACKAGE_ROOT),
-            check_command("package.json parses", "python -m json.tool package.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("features.json parses", f"{python} -m json.tool harness/features.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("skills.json parses", f"{python} -m json.tool harness/skills.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("benchmarks.json parses", f"{python} -m json.tool harness/benchmarks.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("skill schema parses", f"{python} -m json.tool schemas/skill.schema.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("benchmark schema parses", f"{python} -m json.tool schemas/benchmark.schema.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("route schema parses", f"{python} -m json.tool schemas/route-decision.schema.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("final report schema parses", f"{python} -m json.tool schemas/final-report.schema.json", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("cli compiles", f"{python} -m py_compile cli/harness.py", args.timeout, cwd=PACKAGE_ROOT),
+            check_command("cli contract tests", f'{python} -m unittest discover -s tests -p "test_*.py"', args.timeout, cwd=PACKAGE_ROOT),
+            check_command("package.json parses", f"{python} -m json.tool package.json", args.timeout, cwd=PACKAGE_ROOT),
             check_command("npm launcher syntax", "node --check bin/my-harness.js", args.timeout, cwd=PACKAGE_ROOT),
             check_command("git diff whitespace", "git diff --check", args.timeout, cwd=WORKSPACE_ROOT),
+            check_json_schema(
+                "skills.json matches schema",
+                PACKAGE_ROOT / "harness" / "skills.json",
+                PACKAGE_ROOT / "schemas" / "skill.schema.json",
+            ),
+            check_json_schema(
+                "benchmarks.json matches schema",
+                PACKAGE_ROOT / "harness" / "benchmarks.json",
+                PACKAGE_ROOT / "schemas" / "benchmark.schema.json",
+            ),
         ]
     )
     if args.include_active:
@@ -1349,6 +1402,72 @@ def cmd_adapter_discover(args: argparse.Namespace) -> None:
     emit(results, args.json)
 
 
+def adapter_conformance_result(row: sqlite3.Row, timeout: int, fail_on_missing: bool) -> dict[str, Any]:
+    metadata_errors: list[str] = []
+    if not row["executable"]:
+        metadata_errors.append("missing_executable")
+    if not row["version_command"]:
+        metadata_errors.append("missing_version_command")
+    capabilities = parse_json_list(row["capabilities_json"] or "[]")
+    if not capabilities:
+        metadata_errors.append("missing_capabilities")
+    command_mode = row["command_mode"] or "shell"
+    if command_mode not in COMMAND_MODES:
+        metadata_errors.append("invalid_command_mode")
+    if command_mode == "argv" and not row["command_argv_json"]:
+        metadata_errors.append("missing_command_argv_json")
+
+    executable = row["executable"] or row["provider"]
+    availability, discovery_detail = discover_executable(executable)
+    version_exit_code: int | None = None
+    version_output = None
+    if availability == "present" and row["version_command"]:
+        try:
+            version_result = run_command(row["version_command"], timeout)
+            version_exit_code = version_result.returncode
+            version_output = (version_result.stdout or version_result.stderr).strip()
+        except subprocess.TimeoutExpired:
+            version_exit_code = None
+            version_output = "version command timed out"
+
+    status = "pass"
+    if metadata_errors or (availability == "present" and version_exit_code not in {0, None}):
+        status = "fail"
+    elif availability != "present":
+        status = "fail" if fail_on_missing else "skipped"
+
+    return {
+        "adapter_id": row["id"],
+        "provider": row["provider"],
+        "status": status,
+        "availability": availability,
+        "executable": executable,
+        "discovery_detail": discovery_detail,
+        "version_exit_code": version_exit_code,
+        "version_output": version_output,
+        "metadata_errors": metadata_errors,
+        "capabilities": capabilities,
+        "command_mode": command_mode,
+    }
+
+
+def cmd_adapter_conformance(args: argparse.Namespace) -> None:
+    ensure_db()
+    with connect() as conn:
+        if args.adapter:
+            rows = conn.execute("SELECT * FROM agent_adapter WHERE id = ?", (args.adapter,)).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM agent_adapter ORDER BY id").fetchall()
+    if args.adapter and not rows:
+        raise SystemExit(f"adapter not found: {args.adapter}")
+    results = [adapter_conformance_result(row, args.timeout, args.fail_on_missing) for row in rows]
+    status = "pass" if all(result["status"] in {"pass", "skipped"} for result in results) else "fail"
+    payload = {"status": status, "results": results}
+    emit(payload, args.json)
+    if status == "fail":
+        raise SystemExit(1)
+
+
 def cmd_adapter_capability(args: argparse.Namespace) -> None:
     require_db()
     with connect() as conn:
@@ -1663,10 +1782,11 @@ def cmd_adapter_run(args: argparse.Namespace) -> None:
         raise SystemExit(f"adapter not found: {args.adapter}")
     if adapter["availability"] in {"missing", "inactive"} and not args.allow_unavailable:
         raise SystemExit(f"adapter is {adapter['availability']}: {args.adapter}")
-    prompt, prompt_file = read_prompt(args)
-    values = adapter_command_values(args, prompt, prompt_file)
+    prompt, prompt_file, prompt_source = read_prompt(args)
     command_mode = adapter["command_mode"] or "shell"
     command_mode = validate_choice(command_mode, COMMAND_MODES, "command-mode")
+    validate_adapter_contract(adapter, command_mode, prompt, prompt_source)
+    values = adapter_command_values(args, prompt, prompt_file)
     agent_command = render_template(adapter["command_template"], values)
     command_argv: list[str] | None = None
     command_argv_json: str | None = None
@@ -2120,9 +2240,9 @@ def build_parser() -> argparse.ArgumentParser:
     adapter_register.add_argument("--notes")
     adapter_register.add_argument("--capabilities", help="comma-separated list of capabilities or JSON array")
     adapter_register.add_argument("--max-prompt-length", type=int, default=100000)
-    adapter_register.add_argument("--supports-raw-prompt", action="store_true", default=False)
-    adapter_register.add_argument("--supports-templates", action="store_true", default=True)
-    adapter_register.add_argument("--supports-argv", action="store_true", default=True)
+    adapter_register.add_argument("--supports-raw-prompt", action=argparse.BooleanOptionalAction, default=False)
+    adapter_register.add_argument("--supports-templates", action=argparse.BooleanOptionalAction, default=True)
+    adapter_register.add_argument("--supports-argv", action=argparse.BooleanOptionalAction, default=True)
     adapter_register.add_argument("--verification-mode", default="shell")
     adapter_register.set_defaults(func=cmd_adapter_register)
     adapter_capability = adapter_sub.add_parser("capability", help="query adapter capabilities and limits")
@@ -2135,6 +2255,11 @@ def build_parser() -> argparse.ArgumentParser:
     adapter_discover.add_argument("--adapter")
     adapter_discover.add_argument("--timeout", type=int, default=20)
     adapter_discover.set_defaults(func=cmd_adapter_discover)
+    adapter_conformance = adapter_sub.add_parser("conformance", help="check adapter metadata and local executable conformance")
+    adapter_conformance.add_argument("--adapter")
+    adapter_conformance.add_argument("--timeout", type=int, default=20)
+    adapter_conformance.add_argument("--fail-on-missing", action="store_true")
+    adapter_conformance.set_defaults(func=cmd_adapter_conformance)
     adapter_list = adapter_sub.add_parser("list", help="list registered adapters")
     adapter_list.add_argument("--limit", type=int, default=20)
     adapter_list.set_defaults(func=cmd_adapter_list)

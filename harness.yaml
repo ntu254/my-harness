@@ -1,6 +1,6 @@
 schema_version: 0.1
 name: my-harness
-version: 0.10.4
+version: 0.11.0
 principle: "Use the smallest process that safely proves the work."
 lanes:
   - tiny

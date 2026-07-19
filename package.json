@@ -1,6 +1,6 @@
 {
   "name": "@ntu254/my-harness",
-  "version": "0.10.4",
+  "version": "0.11.0",
   "description": "Lightweight control layer for AI coding agents.",
   "bin": {
     "my-harness": "bin/my-harness.js",
@@ -8,10 +8,11 @@
   },
   "files": [
     "AGENTS.md",
+    "LICENSE",
     "README.md",
     "ANALYSIS_CROSS_REPO_IDEAS.md",
     "bin/",
-    "cli/harness.py",
+    "cli/*.py",
     "docs/**/*.md",
     "harness/*.json",
     "harness/*.md",
@@ -33,5 +34,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "license": "UNLICENSED"
+  "license": "MIT"
 }

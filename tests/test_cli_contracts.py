@@ -1,4 +1,5 @@
 import json
+import importlib.util
 import os
 import subprocess
 import sys
@@ -9,6 +10,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "cli" / "harness.py"
+SPEC = importlib.util.spec_from_file_location("harness_cli", CLI)
+assert SPEC and SPEC.loader
+HARNESS_CLI = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(HARNESS_CLI)
 
 
 class HarnessCliContracts(unittest.TestCase):
@@ -192,6 +197,27 @@ class HarnessCliContracts(unittest.TestCase):
         self.assertGreaterEqual(result["pass_count"], 1)
         for key in ["quality", "cost", "adaptiveness", "durability", "total"]:
             self.assertIn(key, result["scores"])
+
+    def test_json_schema_subset_validator_reports_contract_errors(self) -> None:
+        schema = {
+            "type": "object",
+            "required": ["id", "items"],
+            "additionalProperties": False,
+            "properties": {
+                "id": {"type": "string", "minLength": 1},
+                "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {"type": "integer", "minimum": 1},
+                },
+            },
+        }
+
+        self.assertEqual(HARNESS_CLI.validate_json_schema_subset({"id": "ok", "items": [1]}, schema), [])
+        errors = HARNESS_CLI.validate_json_schema_subset({"id": "", "extra": True, "items": [0]}, schema)
+        self.assertTrue(any("unexpected property extra" in error for error in errors))
+        self.assertTrue(any("shorter than minLength" in error for error in errors))
+        self.assertTrue(any("below minimum" in error for error in errors))
 
 
 if __name__ == "__main__":

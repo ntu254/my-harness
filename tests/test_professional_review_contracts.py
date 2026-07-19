@@ -1,5 +1,6 @@
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -51,6 +52,11 @@ class HarnessProfessionalReviewContracts(unittest.TestCase):
 
     def seed_tools(self):
         return self.run_json("--json", "tool", "seed")
+
+    def python_shell_command(self) -> str:
+        if os.name == "nt":
+            return subprocess.list2cmdline([sys.executable])
+        return shlex.quote(sys.executable)
 
     def test_adapter_argv_mode_renders_prompt_file_and_records_run(self) -> None:
         argv = [
@@ -150,6 +156,162 @@ class HarnessProfessionalReviewContracts(unittest.TestCase):
         )
         self.assertIn("raw {prompt}", result.stderr)
 
+    def test_adapter_prompt_shell_preserves_percent_literals(self) -> None:
+        command = f'{self.python_shell_command()} -c "import sys; print(sys.argv[1])" {{prompt_shell}}'
+        self.run_json(
+            "--json",
+            "adapter",
+            "register",
+            "--id",
+            "prompt-shell-literal",
+            "--provider",
+            "mock",
+            "--command-template",
+            command,
+            "--command-mode",
+            "shell",
+            "--availability",
+            "present",
+            "--trust",
+            "verified_local",
+        )
+
+        run = self.run_json(
+            "--json",
+            "adapter",
+            "run",
+            "--adapter",
+            "prompt-shell-literal",
+            "--id",
+            "TST-PROMPT-SHELL-LITERAL",
+            "--summary",
+            "Prompt shell literal guard",
+            "--prompt",
+            "%PATH%",
+            "--verify-command",
+            f"{self.python_shell_command()} --version",
+            "--timeout",
+            "30",
+        )
+
+        log = (self.workspace / run["log_dir"] / "agent.log").read_text(encoding="utf-8")
+        self.assertIn("%PATH%", log)
+        self.assertNotIn(os.environ.get("PATH", ""), log)
+
+    def test_adapter_enforces_prompt_length_contract(self) -> None:
+        self.run_json(
+            "--json",
+            "adapter",
+            "register",
+            "--id",
+            "short-prompt-only",
+            "--provider",
+            "mock",
+            "--command-template",
+            f"{sys.executable} --version",
+            "--availability",
+            "present",
+            "--trust",
+            "verified_local",
+            "--max-prompt-length",
+            "5",
+        )
+
+        result = self.run_raw(
+            "--json",
+            "adapter",
+            "run",
+            "--adapter",
+            "short-prompt-only",
+            "--id",
+            "TST-PROMPT-LIMIT",
+            "--summary",
+            "Prompt length guard",
+            "--prompt",
+            "too long",
+            "--verify-command",
+            f"{sys.executable} --version",
+            expect=1,
+        )
+        self.assertIn("exceeds adapter max_prompt_length", result.stderr)
+
+    def test_adapter_enforces_template_support_contract(self) -> None:
+        self.run_json(
+            "--json",
+            "adapter",
+            "register",
+            "--id",
+            "no-template-support",
+            "--provider",
+            "mock",
+            "--command-template",
+            f"{sys.executable} --version",
+            "--availability",
+            "present",
+            "--trust",
+            "verified_local",
+            "--no-supports-templates",
+        )
+
+        result = self.run_raw(
+            "--json",
+            "adapter",
+            "run",
+            "--adapter",
+            "no-template-support",
+            "--id",
+            "TST-TEMPLATE-SUPPORT",
+            "--summary",
+            "Template support guard",
+            "--prompt-template",
+            "templates/prompts/adapter-smoke.md",
+            "--verify-command",
+            f"{sys.executable} --version",
+            expect=1,
+        )
+        self.assertIn("does not support prompt templates", result.stderr)
+
+    def test_adapter_enforces_argv_support_contract(self) -> None:
+        argv = [sys.executable, "--version"]
+        self.run_json(
+            "--json",
+            "adapter",
+            "register",
+            "--id",
+            "no-argv-support",
+            "--provider",
+            "mock",
+            "--command-template",
+            "python --version",
+            "--command-mode",
+            "argv",
+            "--command-argv-json",
+            json.dumps(argv),
+            "--availability",
+            "present",
+            "--trust",
+            "verified_local",
+            "--no-supports-argv",
+        )
+
+        result = self.run_raw(
+            "--json",
+            "adapter",
+            "run",
+            "--adapter",
+            "no-argv-support",
+            "--id",
+            "TST-ARGV-SUPPORT",
+            "--summary",
+            "Argv support guard",
+            "--prompt",
+            "hello",
+            "--verify-command",
+            f"{sys.executable} --version",
+            expect=1,
+        )
+        self.assertIn("does not support argv command mode", result.stderr)
+
     def test_adapter_preset_installs_capability_metadata(self) -> None:
         self.run_json("--json", "adapter", "preset", "all")
         capability = self.run_json("--json", "adapter", "capability", "--adapter", "mock-python")
@@ -160,6 +322,18 @@ class HarnessProfessionalReviewContracts(unittest.TestCase):
         self.assertIn("echo", capability["capabilities"])
         self.assertEqual(capability["verification_mode"], "argv")
         self.assertTrue(capability["supports_argv"])
+
+    def test_adapter_conformance_reports_mock_preset_ready(self) -> None:
+        self.run_json("--json", "adapter", "preset", "mock-python")
+        conformance = self.run_json("--json", "adapter", "conformance", "--adapter", "mock-python")
+
+        self.assertEqual(conformance["status"], "pass")
+        self.assertEqual(len(conformance["results"]), 1)
+        result = conformance["results"][0]
+        self.assertEqual(result["adapter_id"], "mock-python")
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(result["availability"], "present")
+        self.assertEqual(result["metadata_errors"], [])
 
     def test_route_is_deterministic_for_same_input(self) -> None:
         self.seed_tools()

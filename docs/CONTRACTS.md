@@ -48,7 +48,7 @@ python -m unittest discover -s tests -p "test_*.py"
 The standard check command also runs these tests:
 
 ```powershell
-.\harness\harness.ps1 check --include-active --strict-active
+.\scripts\harness.ps1 check --include-active --strict-active
 ```
 
 ## Rule

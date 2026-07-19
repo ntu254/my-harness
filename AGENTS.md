@@ -19,8 +19,8 @@ are:
 
 - `harness/features.json`: source of truth for feature status and evidence.
 - `harness/progress.md`: session log, verified state, blockers, and next step.
-- `harness/init.sh` and `harness/init.ps1`: startup/bootstrap paths.
-- `harness/harness.sh` and `harness/harness.ps1`: CLI entrypoints.
+- `scripts/init.sh` and `scripts/init.ps1`: startup/bootstrap paths.
+- `scripts/harness.sh` and `scripts/harness.ps1`: CLI entrypoints.
 - `session-handoff.md`: optional short handoff for unusually large sessions.
 - `docs/INDEX.md`: map of durable docs and decision records.
 
@@ -83,19 +83,19 @@ Before writing code:
 5. Initialize local state:
 
    ```powershell
-   .\harness\harness.ps1 init
+   .\scripts\harness.ps1 init
    ```
 
    On POSIX:
 
    ```bash
-   bash harness/harness.sh init
+   bash scripts/harness.sh init
    ```
 
 6. Run the necessary smoke or end-to-end verification before starting new work:
 
    ```powershell
-   .\harness\harness.ps1 check --include-active --strict-active
+   .\scripts\harness.ps1 check --include-active --strict-active
    ```
 
    If the baseline verification fails, fix that first. Do not stack new feature
@@ -104,13 +104,13 @@ Before writing code:
 7. Seed/check tools when routing or proof policy matters:
 
    ```powershell
-   .\harness\harness.ps1 tool seed
+   .\scripts\harness.ps1 tool seed
    ```
 
 8. Route non-trivial work before implementing:
 
    ```powershell
-   .\harness\harness.ps1 route --json --summary "<task>" --work-type <type> --scope <scope> --risk <risk> --persist
+   .\scripts\harness.ps1 route --json --summary "<task>" --work-type <type> --scope <scope> --risk <risk> --persist
    ```
 
 9. Work on one active feature at a time unless the user explicitly asks for
@@ -122,31 +122,31 @@ Use top-level `--json` for machine-readable output when a command group does
 not define its own subcommand-level `--json`.
 
 ```powershell
-.\harness\harness.ps1 check --include-active --strict-active
-.\harness\harness.ps1 --json query active
-.\harness\harness.ps1 bench run --json --fail-on-regression
+.\scripts\harness.ps1 check --include-active --strict-active
+.\scripts\harness.ps1 --json query active
+.\scripts\harness.ps1 bench run --json --fail-on-regression
 ```
 
 Runner and adapter work:
 
 ```powershell
-.\harness\harness.ps1 run once --help
-.\harness\harness.ps1 adapter preset list
-.\harness\harness.ps1 adapter capability
+.\scripts\harness.ps1 run once --help
+.\scripts\harness.ps1 adapter preset list
+.\scripts\harness.ps1 adapter capability
 ```
 
 Completion gates:
 
 ```powershell
-.\harness\harness.ps1 report final --json --story <story-id> --route-id <route-id> --persist
-.\harness\harness.ps1 complete --json --story <story-id> --route-id <route-id>
+.\scripts\harness.ps1 report final --json --story <story-id> --route-id <route-id> --persist
+.\scripts\harness.ps1 complete --json --story <story-id> --route-id <route-id>
 ```
 
 Human gates:
 
 ```powershell
-.\harness\harness.ps1 approval request --summary "<bounded action>" --risk critical --scope <scope> --ttl-minutes 60
-.\harness\harness.ps1 approval check --id <approval-id> --scope <scope> --fail-on-invalid
+.\scripts\harness.ps1 approval request --summary "<bounded action>" --risk critical --scope <scope> --ttl-minutes 60
+.\scripts\harness.ps1 approval check --id <approval-id> --scope <scope> --fail-on-invalid
 ```
 
 ## Routing And Proof Policy
@@ -192,7 +192,7 @@ Before ending a significant session:
 4. Run the appropriate verification path, usually:
 
    ```powershell
-   .\harness\harness.ps1 check --include-active --strict-active
+   .\scripts\harness.ps1 check --include-active --strict-active
    ```
 
 5. Commit with a descriptive message when the work is in a safe state.

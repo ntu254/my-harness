@@ -48,9 +48,9 @@ history.
 
 ## Planning And Evidence
 
-- `harness/v0.1-acceptance.md` through `harness/v0.10-acceptance.md`:
+- `docs/releases/v0.1-acceptance.md` through `docs/releases/v0.10-acceptance.md`:
   version acceptance evidence.
-- `harness/v0.3-plan.md` through `harness/v0.10-plan.md`: scoped version
+- `docs/releases/v0.3-plan.md` through `docs/releases/v0.10-plan.md`: scoped version
   plans.
 - `ANALYSIS_CROSS_REPO_IDEAS.md`: curated cross-repo ideas and backlog.
 

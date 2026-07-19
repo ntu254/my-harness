@@ -26,7 +26,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE_ROOT = Path(os.environ.get("MY_HARNESS_WORKSPACE", PACKAGE_ROOT)).resolve()
 ROOT = PACKAGE_ROOT
 DEFAULT_DB = WORKSPACE_ROOT / "harness" / "harness.db"
-SCHEMA_DIR = PACKAGE_ROOT / "state" / "schema"
+SCHEMA_DIR = PACKAGE_ROOT / "migrations"
 
 
 INTENTS = {"read", "analyze", "plan", "modify", "execute"}
@@ -935,15 +935,18 @@ def check_required_files() -> list[dict[str, Any]]:
         "harness.yaml",
         "harness/features.json",
         "harness/progress.md",
-        "harness/init.ps1",
+        "scripts/init.ps1",
+        "scripts/init.sh",
+        "scripts/harness.ps1",
+        "scripts/harness.sh",
         "cli/harness.py",
-        "state/schema/001-init.sql",
-        "state/schema/002-adapters.sql",
-        "state/schema/003-adapter-discovery.sql",
-        "state/schema/004-argv-and-prompt-templates.sql",
-        "state/schema/005-adapter-capabilities.sql",
-        "state/schema/006-routing-alignment.sql",
-        "state/schema/007-core-gates.sql",
+        "migrations/001-init.sql",
+        "migrations/002-adapters.sql",
+        "migrations/003-adapter-discovery.sql",
+        "migrations/004-argv-and-prompt-templates.sql",
+        "migrations/005-adapter-capabilities.sql",
+        "migrations/006-routing-alignment.sql",
+        "migrations/007-core-gates.sql",
         "harness/skills.json",
         "harness/benchmarks.json",
         "schemas/skill.schema.json",

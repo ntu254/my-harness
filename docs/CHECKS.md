@@ -3,7 +3,7 @@
 `harness check` is the standard quality gate command.
 
 ```powershell
-.\harness\harness.ps1 check --include-active --strict-active
+.\scripts\harness.ps1 check --include-active --strict-active
 ```
 
 ## What It Checks
@@ -18,7 +18,7 @@
 ## JSON Output
 
 ```powershell
-.\harness\harness.ps1 --json check --include-active --strict-active
+.\scripts\harness.ps1 --json check --include-active --strict-active
 ```
 
 The command exits non-zero if any check fails.
@@ -28,7 +28,7 @@ The command exits non-zero if any check fails.
 Schema files live in:
 
 ```text
-state/schema/
+migrations/
 ```
 
 Each file must start with a numeric version, for example:

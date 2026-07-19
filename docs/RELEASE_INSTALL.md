@@ -41,8 +41,8 @@ Do not move a published tag. If a tag is wrong, create a new patch tag such as
 ```powershell
 git clone --branch v0.2.0 --depth 1 https://github.com/ntu254/my-harness.git my-harness-v0.2
 cd my-harness-v0.2
-.\harness\harness.ps1 --json init
-.\harness\harness.ps1 check
+.\scripts\harness.ps1 --json init
+.\scripts\harness.ps1 check
 ```
 
 This is the most faithful way to inspect an old milestone because it runs the
@@ -55,7 +55,7 @@ After the launcher exists on GitHub, run it through `npx` from the repository:
 ```powershell
 npx github:ntu254/my-harness install --version v0.2.0 --target .\my-harness-v0.2
 cd .\my-harness-v0.2
-.\harness\harness.ps1 --json init
+.\scripts\harness.ps1 --json init
 ```
 
 After publishing the package to npm:
@@ -121,6 +121,6 @@ Before a new version is announced:
 - `README.md` describes the user-visible capability surface.
 - `harness/features.json` has evidence.
 - `harness/progress.md` records verification.
-- `.\harness\harness.ps1 check --include-active --strict-active` passes.
+- `.\scripts\harness.ps1 check --include-active --strict-active` passes.
 - `npm pack --dry-run` shows only intended files.
 - Git tag and GitHub release notes point to the acceptance evidence.

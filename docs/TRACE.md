@@ -21,7 +21,7 @@ For significant change work, record:
 Goal: Validate tiny docs workflow.
 Lane: tiny.
 Changed: README.md.
-Verification: harness/init.ps1 passed after edit.
+Verification: scripts/init.ps1 passed after edit.
 Evidence: command output in session.
 Risk: none.
 Next: Run high-risk request simulation.

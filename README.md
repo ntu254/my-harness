@@ -53,9 +53,9 @@ Windows:
 ```powershell
 git clone https://github.com/ntu254/my-harness.git
 cd my-harness
-.\harness\init.ps1
-.\harness\harness.ps1 check --include-active --strict-active
-.\harness\harness.ps1 query active
+.\scripts\init.ps1
+.\scripts\harness.ps1 check --include-active --strict-active
+.\scripts\harness.ps1 query active
 ```
 
 macOS/Linux:
@@ -63,9 +63,9 @@ macOS/Linux:
 ```bash
 git clone https://github.com/ntu254/my-harness.git
 cd my-harness
-bash harness/init.sh
-bash harness/harness.sh check --include-active --strict-active
-bash harness/harness.sh query active
+bash scripts/init.sh
+bash scripts/harness.sh check --include-active --strict-active
+bash scripts/harness.sh query active
 ```
 
 Run the package launcher from the repository:
@@ -82,7 +82,7 @@ Use Git when you want the exact source at a historical milestone:
 ```powershell
 git clone --branch v0.2.0 --depth 1 https://github.com/ntu254/my-harness.git my-harness-v0.2
 cd my-harness-v0.2
-.\harness\harness.ps1 --json init
+.\scripts\harness.ps1 --json init
 ```
 
 Use the GitHub `npx` launcher when you want a convenient installer experience:
@@ -134,18 +134,18 @@ runs.
 Common commands:
 
 ```powershell
-.\harness\harness.ps1 --json init
-.\harness\harness.ps1 --json query active
-.\harness\harness.ps1 check --include-active --strict-active
+.\scripts\harness.ps1 --json init
+.\scripts\harness.ps1 --json query active
+.\scripts\harness.ps1 check --include-active --strict-active
 ```
 
 Record work manually:
 
 ```powershell
-.\harness\harness.ps1 --json intake add --intent modify --work-type bugfix --scope module --uncertainty medium --reversibility easy --risk medium --lane normal --summary "Fix parser bug"
-.\harness\harness.ps1 --json story add --id BUG-001 --title "Fix parser bug" --lane normal
-.\harness\harness.ps1 --json evidence add --kind test --target BUG-001 --result pass --command "python -m unittest" --story BUG-001
-.\harness\harness.ps1 --json trace add --summary "Parser bug fixed" --outcome completed --story BUG-001 --evidence 1
+.\scripts\harness.ps1 --json intake add --intent modify --work-type bugfix --scope module --uncertainty medium --reversibility easy --risk medium --lane normal --summary "Fix parser bug"
+.\scripts\harness.ps1 --json story add --id BUG-001 --title "Fix parser bug" --lane normal
+.\scripts\harness.ps1 --json evidence add --kind test --target BUG-001 --result pass --command "python -m unittest" --story BUG-001
+.\scripts\harness.ps1 --json trace add --summary "Parser bug fixed" --outcome completed --story BUG-001 --evidence 1
 ```
 
 ### Routing And Capability Resolution
@@ -154,20 +154,20 @@ The deterministic router selects workflow, skills, required capabilities,
 available tools, proof policy, and human-gate status:
 
 ```powershell
-.\harness\harness.ps1 tool seed
-.\harness\harness.ps1 route --json --summary "Fix login regression" --work-type bugfix --scope module --risk medium
+.\scripts\harness.ps1 tool seed
+.\scripts\harness.ps1 route --json --summary "Fix login regression" --work-type bugfix --scope module --risk medium
 ```
 
 UI/design work intentionally requires stronger proof:
 
 ```powershell
-.\harness\harness.ps1 route --json --summary "Update dashboard component" --work-type feature --scope module --risk medium --tag ui
+.\scripts\harness.ps1 route --json --summary "Update dashboard component" --work-type feature --scope module --risk medium --tag ui
 ```
 
 Irreversible or critical work routes to approval:
 
 ```powershell
-.\harness\harness.ps1 route --json --summary "Deploy production migration" --work-type migration --scope external_system --risk critical --reversibility irreversible
+.\scripts\harness.ps1 route --json --summary "Deploy production migration" --work-type migration --scope external_system --risk critical --reversibility irreversible
 ```
 
 ### Adapter Execution
@@ -183,16 +183,16 @@ Built-in adapter presets:
 Install and inspect presets:
 
 ```powershell
-.\harness\harness.ps1 --json adapter preset all
-.\harness\harness.ps1 --json adapter capability
-.\harness\harness.ps1 adapter discover
-.\harness\harness.ps1 --json adapter conformance
+.\scripts\harness.ps1 --json adapter preset all
+.\scripts\harness.ps1 --json adapter capability
+.\scripts\harness.ps1 adapter discover
+.\scripts\harness.ps1 --json adapter conformance
 ```
 
 Run a task through an adapter:
 
 ```powershell
-.\harness\harness.ps1 --json adapter run --adapter mock-python --id SMOKE-001 --summary "Adapter smoke" --prompt "Say hello" --verify-command "python --version" --timeout 30
+.\scripts\harness.ps1 --json adapter run --adapter mock-python --id SMOKE-001 --summary "Adapter smoke" --prompt "Say hello" --verify-command "python --version" --timeout 30
 ```
 
 Adapter safety rules:
@@ -209,9 +209,9 @@ Adapter safety rules:
 Request, resolve, and check scoped approval:
 
 ```powershell
-.\harness\harness.ps1 --json approval request --summary "Deploy production migration" --risk critical --scope deploy-prod --ttl-minutes 60
-.\harness\harness.ps1 --json approval resolve --id 1 --status approved
-.\harness\harness.ps1 --json approval check --id 1 --scope deploy-prod
+.\scripts\harness.ps1 --json approval request --summary "Deploy production migration" --risk critical --scope deploy-prod --ttl-minutes 60
+.\scripts\harness.ps1 --json approval resolve --id 1 --status approved
+.\scripts\harness.ps1 --json approval check --id 1 --scope deploy-prod
 ```
 
 Approval is scoped and expires. A valid approval for one scope does not unlock a
@@ -222,8 +222,8 @@ different scope.
 Completion is a gate, not a status edit:
 
 ```powershell
-.\harness\harness.ps1 report final --json --story BUG-001 --route-id 1 --persist
-.\harness\harness.ps1 complete --json --story BUG-001 --route-id 1
+.\scripts\harness.ps1 report final --json --story BUG-001 --route-id 1 --persist
+.\scripts\harness.ps1 complete --json --story BUG-001 --route-id 1
 ```
 
 The gate checks evidence freshness, required proof gaps, optional proof gaps,
@@ -234,7 +234,7 @@ approval validity, git head, and dirty state.
 Run deterministic route fixtures:
 
 ```powershell
-.\harness\harness.ps1 bench run --json --fail-on-regression
+.\scripts\harness.ps1 bench run --json --fail-on-regression
 ```
 
 Benchmark scores currently evaluate the controller: route selection, skill
@@ -251,8 +251,9 @@ cli/harness.py                Python stdlib CLI
 bin/my-harness.js             Node launcher for npx/GitHub use
 harness/features.json         Feature state and verification evidence
 harness/progress.md           Session log and current verified state
-harness/*.ps1, *.sh           Local startup and CLI wrappers
-state/schema/*.sql            SQLite migrations
+scripts/*.ps1, *.sh           Local startup and CLI wrappers
+migrations/*.sql              SQLite migrations
+docs/releases/*.md            Version plans, acceptance evidence, and status notes
 schemas/*.schema.json         JSON contract schemas
 tests/test_*.py               CLI, adapter, route, and gate contract tests
 docs/                         Durable operating documentation
@@ -268,7 +269,7 @@ Standard local verification:
 ```powershell
 python -m unittest discover -s tests -p "test_*.py"
 npm run check
-.\harness\harness.ps1 check --include-active --strict-active
+.\scripts\harness.ps1 check --include-active --strict-active
 npm pack --dry-run
 ```
 

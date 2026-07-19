@@ -11,11 +11,11 @@ state:
   features: harness/features.json
   progress: harness/progress.md
 startup:
-  windows: harness/init.ps1
-  posix: harness/init.sh
+  windows: scripts/init.ps1
+  posix: scripts/init.sh
 cli:
-  windows: harness/harness.ps1
-  posix: harness/harness.sh
+  windows: scripts/harness.ps1
+  posix: scripts/harness.sh
   database: harness/harness.db
   runtime_logs: harness/runs/
   runtime_prompts: harness/prompts/

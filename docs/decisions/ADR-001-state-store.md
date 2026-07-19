@@ -61,4 +61,4 @@ Costs:
 - `harness/progress.md`
 - `docs/CONTRACTS.md`
 - `docs/GATES.md`
-- `state/schema/*.sql`
+- `migrations/*.sql`

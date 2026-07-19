@@ -10,7 +10,7 @@ allowed to be closed.
 Use:
 
 ```powershell
-.\harness\harness.ps1 report final --json --story MH-123 --route-id 7 --persist
+.\scripts\harness.ps1 report final --json --story MH-123 --route-id 7 --persist
 ```
 
 The report includes:
@@ -37,7 +37,7 @@ The report status is:
 Use:
 
 ```powershell
-.\harness\harness.ps1 complete --json --story MH-123 --route-id 7
+.\scripts\harness.ps1 complete --json --story MH-123 --route-id 7
 ```
 
 `complete` persists a completion report and updates the story to `completed`
@@ -50,7 +50,7 @@ state captured when evidence was recorded. Stale evidence blocks completion
 unless explicitly allowed:
 
 ```powershell
-.\harness\harness.ps1 complete --story MH-123 --allow-stale-evidence
+.\scripts\harness.ps1 complete --story MH-123 --allow-stale-evidence
 ```
 
 That override should be rare and must be explained in residual risk.
@@ -60,20 +60,20 @@ That override should be rare and must be explained in residual risk.
 Approvals are bounded by scope and expiry:
 
 ```powershell
-.\harness\harness.ps1 approval request `
+.\scripts\harness.ps1 approval request `
   --summary "Approve production migration" `
   --risk critical `
   --scope deploy-prod-2026-07-19 `
   --ttl-minutes 60
 
-.\harness\harness.ps1 approval check --id 4 --scope deploy-prod-2026-07-19 --fail-on-invalid
+.\scripts\harness.ps1 approval check --id 4 --scope deploy-prod-2026-07-19 --fail-on-invalid
 ```
 
 High-risk runner commands can use a valid approval instead of
 `--allow-high-risk`:
 
 ```powershell
-.\harness\harness.ps1 run once `
+.\scripts\harness.ps1 run once `
   --id MH-DEPLOY `
   --summary "Run bounded migration" `
   --agent-command "python --version" `

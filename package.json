@@ -16,10 +16,10 @@
     "docs/**/*.md",
     "harness/*.json",
     "harness/*.md",
-    "harness/*.ps1",
-    "harness/*.sh",
+    "scripts/*.ps1",
+    "scripts/*.sh",
     "schemas/*.json",
-    "state/schema/[0-9]*.sql",
+    "migrations/[0-9]*.sql",
     "templates/**/*.md",
     "tests/test_*.py",
     "harness.yaml"

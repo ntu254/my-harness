@@ -7,7 +7,7 @@ v0.8 restores the planned orchestration layer that sits before execution:
 The main user-facing command is:
 
 ```powershell
-.\harness\harness.ps1 route --json --summary "Fix parser bug" --work-type bugfix --scope module --risk medium
+.\scripts\harness.ps1 route --json --summary "Fix parser bug" --work-type bugfix --scope module --risk medium
 ```
 
 The route decision returns:
@@ -28,13 +28,13 @@ The route decision returns:
 Seed local/manual capabilities with:
 
 ```powershell
-.\harness\harness.ps1 tool seed
+.\scripts\harness.ps1 tool seed
 ```
 
 Register project-specific tools with:
 
 ```powershell
-.\harness\harness.ps1 tool register --id pnpm-test --capability test-runner --command "pnpm test" --availability present
+.\scripts\harness.ps1 tool register --id pnpm-test --capability test-runner --command "pnpm test" --availability present
 ```
 
 The route command is intentionally deterministic in v0.8. Later versions can add scoring, project profiles, agent selection, and learned routing weights without changing the basic contract.

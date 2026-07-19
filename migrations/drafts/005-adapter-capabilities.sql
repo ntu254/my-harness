@@ -1,5 +1,5 @@
 -- v0.7 draft: Adapter capabilities taxonomy and verification modes.
--- This file is intentionally under state/schema/drafts/ so v0.6 init/check
+-- This file is intentionally under migrations/drafts/ so v0.6 init/check
 -- does not apply it as an active migration.
 
 ALTER TABLE agent_adapter ADD COLUMN capabilities_json TEXT DEFAULT '[]';

@@ -4,8 +4,8 @@
 
 - Repository root: `E:/HESD/my-harness`
 - Standard startup path:
-  - Windows: `.\harness\init.ps1`
-  - POSIX: `bash harness/init.sh`
+  - Windows: `.\scripts\init.ps1`
+  - POSIX: `bash scripts/init.sh`
 - Standard verification path: run the startup path and any workflow-specific
   evidence listed in `harness/features.json`.
 - Active feature: none. `MH-001`, `MH-002`, `MH-004`, `MH-005`, `MH-006`, `MH-007`, `MH-008`, `MH-009`, `MH-010`, `MH-011`, and `MH-012` are passing.
@@ -24,7 +24,7 @@ readiness before provider adapters.
 - Goal: Scaffold `my-harness` v0.1 continuity package.
 - Completed: initial docs, state files, scripts, and templates created.
 - Verification executed:
-  - `.\harness\init.ps1`
+  - `.\scripts\init.ps1`
   - `python -m json.tool harness\features.json`
   - `rg --files`
 - Evidence recorded: `harness/features.json` records scaffold validation.
@@ -43,17 +43,17 @@ readiness before provider adapters.
   - Test D high-risk request simulation.
   - Test E handoff readiness review.
 - Verification executed:
-  - `.\harness\init.ps1`
+  - `.\scripts\init.ps1`
   - `python -m json.tool harness\features.json`
   - `git diff --check`
 - Evidence recorded:
-  - `harness/v0.1-acceptance.md`
+  - `docs/releases/v0.1-acceptance.md`
   - `harness/features.json`
 - Commit: acceptance closure pushed to `origin/main`; use `git log --oneline -2`
   for the exact current history.
 - Updated files or artifacts:
   - `README.md`
-  - `harness/v0.1-acceptance.md`
+  - `docs/releases/v0.1-acceptance.md`
   - `harness/features.json`
   - `harness/progress.md`
 - Known risks: POSIX script still has not been run in a POSIX shell in this session.
@@ -65,24 +65,24 @@ readiness before provider adapters.
 - Goal: Implement v0.2 CLI/SQLite MVP.
 - Completed:
   - Added `cli/harness.py`.
-  - Added SQLite schema at `state/schema/001-init.sql`.
+  - Added SQLite schema at `migrations/001-init.sql`.
   - Added Windows and POSIX CLI wrappers.
   - Added `docs/CLI.md`.
   - Updated startup scripts to initialize local SQLite state.
 - Verification executed:
-  - `.\harness\init.ps1`
+  - `.\scripts\init.ps1`
   - `python -m json.tool harness\features.json`
   - `python -m py_compile cli\harness.py`
-  - `.\harness\harness.ps1 intake add ...`
-  - `.\harness\harness.ps1 story add --id MH-005 ...`
-  - `.\harness\harness.ps1 evidence add ...`
-  - `.\harness\harness.ps1 trace add ...`
-  - `.\harness\harness.ps1 query active`
-  - `.\harness\harness.ps1 --json query stories`
-  - `.\harness\harness.ps1 story update --expected-revision ...`
+  - `.\scripts\harness.ps1 intake add ...`
+  - `.\scripts\harness.ps1 story add --id MH-005 ...`
+  - `.\scripts\harness.ps1 evidence add ...`
+  - `.\scripts\harness.ps1 trace add ...`
+  - `.\scripts\harness.ps1 query active`
+  - `.\scripts\harness.ps1 --json query stories`
+  - `.\scripts\harness.ps1 story update --expected-revision ...`
   - `git diff --check`
 - Evidence recorded:
-  - `harness/v0.2-acceptance.md`
+  - `docs/releases/v0.2-acceptance.md`
   - `harness/features.json`
   - local runtime DB: `harness/harness.db` (ignored by git)
 - Commit: recorded in the latest `origin/main` history after push.
@@ -91,13 +91,13 @@ readiness before provider adapters.
   - `harness.yaml`
   - `harness/features.json`
   - `harness/progress.md`
-  - `harness/init.ps1`
-  - `harness/init.sh`
-  - `harness/harness.ps1`
-  - `harness/harness.sh`
-  - `harness/v0.2-acceptance.md`
+  - `scripts/init.ps1`
+  - `scripts/init.sh`
+  - `scripts/harness.ps1`
+  - `scripts/harness.sh`
+  - `docs/releases/v0.2-acceptance.md`
   - `cli/harness.py`
-  - `state/schema/001-init.sql`
+  - `migrations/001-init.sql`
   - `docs/CLI.md`
 - Known risks: POSIX wrapper not executed in a POSIX shell in this session.
 - Best next step: design v0.3 orchestration runner, including task execution
@@ -115,18 +115,18 @@ readiness before provider adapters.
   - Added command log capture under ignored runtime state.
   - Added runner docs and v0.3 plan.
 - Verification executed:
-  - `.\harness\init.ps1`
+  - `.\scripts\init.ps1`
   - `python -m json.tool harness\features.json`
   - `python -m py_compile cli\harness.py`
-  - `.\harness\harness.ps1 run once --help`
-  - `.\harness\harness.ps1 --json run once --id MH-006 ...`
-  - `.\harness\harness.ps1 --json run once --id MH-006-GUARD ...`
-  - `.\harness\harness.ps1 --json query runs`
-  - `.\harness\harness.ps1 --json query stories`
+  - `.\scripts\harness.ps1 run once --help`
+  - `.\scripts\harness.ps1 --json run once --id MH-006 ...`
+  - `.\scripts\harness.ps1 --json run once --id MH-006-GUARD ...`
+  - `.\scripts\harness.ps1 --json query runs`
+  - `.\scripts\harness.ps1 --json query stories`
   - `git diff --check`
 - Evidence recorded:
-  - `harness/v0.3-plan.md`
-  - `harness/v0.3-acceptance.md`
+  - `docs/releases/v0.3-plan.md`
+  - `docs/releases/v0.3-acceptance.md`
   - `harness/features.json`
   - local runtime DB: `harness/harness.db` (ignored by git)
   - local runtime logs: `harness/runs/` (ignored by git)
@@ -139,10 +139,10 @@ readiness before provider adapters.
   - `harness.yaml`
   - `harness/features.json`
   - `harness/progress.md`
-  - `harness/v0.3-plan.md`
-  - `harness/v0.3-acceptance.md`
+  - `docs/releases/v0.3-plan.md`
+  - `docs/releases/v0.3-acceptance.md`
   - `cli/harness.py`
-  - `state/schema/001-init.sql`
+  - `migrations/001-init.sql`
 - Known risks:
   - POSIX wrapper not executed in a POSIX shell in this session.
   - No provider-specific Claude/Codex adapter yet.
@@ -155,26 +155,26 @@ readiness before provider adapters.
 - Date: 2026-07-19
 - Goal: Implement v0.4 adapter contract, migration discipline, and check command.
 - Completed:
-  - Added versioned schema loading from `state/schema/*.sql`.
-  - Added `state/schema/002-adapters.sql`.
+  - Added versioned schema loading from `migrations/*.sql`.
+  - Added `migrations/002-adapters.sql`.
   - Added `agent_adapter` registry state.
   - Added `adapter register`, `adapter list`, and `adapter run`.
   - Added `harness check`.
   - Added adapter/check docs and v0.4 plan.
 - Verification executed:
-  - `.\harness\harness.ps1 --json init`
-  - `.\harness\harness.ps1 check --include-active --strict-active`
+  - `.\scripts\harness.ps1 --json init`
+  - `.\scripts\harness.ps1 check --include-active --strict-active`
   - `python -m py_compile cli\harness.py`
-  - `.\harness\harness.ps1 adapter run --help`
-  - `.\harness\harness.ps1 --json adapter register --id mock-python ...`
-  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-007 ...`
-  - `.\harness\harness.ps1 --json query adapters`
-  - `.\harness\harness.ps1 --json query runs`
+  - `.\scripts\harness.ps1 adapter run --help`
+  - `.\scripts\harness.ps1 --json adapter register --id mock-python ...`
+  - `.\scripts\harness.ps1 --json adapter run --adapter mock-python --id MH-007 ...`
+  - `.\scripts\harness.ps1 --json query adapters`
+  - `.\scripts\harness.ps1 --json query runs`
   - inactive adapter rejection smoke
   - `git diff --check`
 - Evidence recorded:
-  - `harness/v0.4-plan.md`
-  - `harness/v0.4-acceptance.md`
+  - `docs/releases/v0.4-plan.md`
+  - `docs/releases/v0.4-acceptance.md`
   - `harness/features.json`
   - local runtime DB: `harness/harness.db` (ignored by git)
   - local runtime logs: `harness/runs/` (ignored by git)
@@ -187,10 +187,10 @@ readiness before provider adapters.
   - `harness.yaml`
   - `harness/features.json`
   - `harness/progress.md`
-  - `harness/v0.4-plan.md`
-  - `harness/v0.4-acceptance.md`
+  - `docs/releases/v0.4-plan.md`
+  - `docs/releases/v0.4-acceptance.md`
   - `cli/harness.py`
-  - `state/schema/002-adapters.sql`
+  - `migrations/002-adapters.sql`
 - Known risks:
   - POSIX wrapper not executed in a POSIX shell in this session.
   - Real Claude/Codex adapter presets are not included yet.
@@ -203,7 +203,7 @@ readiness before provider adapters.
 - Date: 2026-07-19
 - Goal: Implement v0.5 provider presets, prompt-file rendering, and adapter discovery.
 - Completed:
-  - Added `state/schema/003-adapter-discovery.sql`.
+  - Added `migrations/003-adapter-discovery.sql`.
   - Added adapter presets for `mock-python`, `codex-local`, and `claude-local`.
   - Added `adapter preset`.
   - Added `adapter discover`.
@@ -211,19 +211,19 @@ readiness before provider adapters.
   - Added runtime prompt-file generation under `harness/prompts/`.
   - Added shell-quoted placeholders and raw prompt guard.
 - Verification executed:
-  - `.\harness\harness.ps1 --json init`
+  - `.\scripts\harness.ps1 --json init`
   - `python -m py_compile cli\harness.py`
-  - `.\harness\harness.ps1 adapter preset list`
-  - `.\harness\harness.ps1 --json adapter preset all`
-  - `.\harness\harness.ps1 --json adapter discover --adapter mock-python`
-  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-008 ...`
+  - `.\scripts\harness.ps1 adapter preset list`
+  - `.\scripts\harness.ps1 --json adapter preset all`
+  - `.\scripts\harness.ps1 --json adapter discover --adapter mock-python`
+  - `.\scripts\harness.ps1 --json adapter run --adapter mock-python --id MH-008 ...`
   - `Test-Path harness\prompts\MH-008.prompt.txt`
-  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-008-FILE --prompt-file ...`
+  - `.\scripts\harness.ps1 --json adapter run --adapter mock-python --id MH-008-FILE --prompt-file ...`
   - raw `{prompt}` guard rejection smoke
-  - `.\harness\harness.ps1 --json check --include-active --strict-active`
+  - `.\scripts\harness.ps1 --json check --include-active --strict-active`
 - Evidence recorded:
-  - `harness/v0.5-plan.md`
-  - `harness/v0.5-acceptance.md`
+  - `docs/releases/v0.5-plan.md`
+  - `docs/releases/v0.5-acceptance.md`
   - `harness/features.json`
   - local runtime DB: `harness/harness.db` (ignored by git)
   - local runtime logs: `harness/runs/` (ignored by git)
@@ -238,10 +238,10 @@ readiness before provider adapters.
   - `harness.yaml`
   - `harness/features.json`
   - `harness/progress.md`
-  - `harness/v0.5-plan.md`
-  - `harness/v0.5-acceptance.md`
+  - `docs/releases/v0.5-plan.md`
+  - `docs/releases/v0.5-acceptance.md`
   - `cli/harness.py`
-  - `state/schema/003-adapter-discovery.sql`
+  - `migrations/003-adapter-discovery.sql`
 - Known risks:
   - POSIX wrapper not executed in a POSIX shell in this session.
   - Codex and Claude presets are not provider-smoked yet.
@@ -254,7 +254,7 @@ readiness before provider adapters.
 - Date: 2026-07-19
 - Goal: Implement v0.6 argv adapter execution and prompt templates.
 - Completed:
-  - Added `state/schema/004-argv-and-prompt-templates.sql`.
+  - Added `migrations/004-argv-and-prompt-templates.sql`.
   - Added adapter `command_mode`.
   - Added adapter `command_argv_json`.
   - Added shell-free argv execution for adapter agent commands.
@@ -262,17 +262,17 @@ readiness before provider adapters.
   - Added repeated `--var key=value` prompt variables.
   - Added `templates/prompts/adapter-smoke.md`.
 - Verification executed:
-  - `.\harness\harness.ps1 --json init`
+  - `.\scripts\harness.ps1 --json init`
   - `python -m py_compile cli\harness.py`
-  - `.\harness\harness.ps1 --json adapter preset all`
-  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-009 ...`
-  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-009-TEMPLATE --prompt-template ...`
-  - `.\harness\harness.ps1 --json query runs --limit 3`
+  - `.\scripts\harness.ps1 --json adapter preset all`
+  - `.\scripts\harness.ps1 --json adapter run --adapter mock-python --id MH-009 ...`
+  - `.\scripts\harness.ps1 --json adapter run --adapter mock-python --id MH-009-TEMPLATE --prompt-template ...`
+  - `.\scripts\harness.ps1 --json query runs --limit 3`
   - fresh DB validation through schema versions `1,2,3,4`
-  - `.\harness\harness.ps1 --json check --include-active --strict-active`
+  - `.\scripts\harness.ps1 --json check --include-active --strict-active`
 - Evidence recorded:
-  - `harness/v0.6-plan.md`
-  - `harness/v0.6-acceptance.md`
+  - `docs/releases/v0.6-plan.md`
+  - `docs/releases/v0.6-acceptance.md`
   - `harness/features.json`
   - local runtime DB: `harness/harness.db` (ignored by git)
   - local runtime logs: `harness/runs/` (ignored by git)
@@ -286,10 +286,10 @@ readiness before provider adapters.
   - `harness.yaml`
   - `harness/features.json`
   - `harness/progress.md`
-  - `harness/v0.6-plan.md`
-  - `harness/v0.6-acceptance.md`
+  - `docs/releases/v0.6-plan.md`
+  - `docs/releases/v0.6-acceptance.md`
   - `cli/harness.py`
-  - `state/schema/004-argv-and-prompt-templates.sql`
+  - `migrations/004-argv-and-prompt-templates.sql`
   - `templates/prompts/adapter-smoke.md`
 - Known risks:
   - POSIX wrapper not executed in a POSIX shell in this session.
@@ -303,30 +303,30 @@ readiness before provider adapters.
 - Date: 2026-07-19
 - Goal: Implement v0.7 adapter capability taxonomy and schema preparation for shell-free verification.
 - Completed:
-  - Added `state/schema/005-adapter-capabilities.sql` with capability fields to agent_adapter.
+  - Added `migrations/005-adapter-capabilities.sql` with capability fields to agent_adapter.
   - Updated ADAPTER_PRESETS with capabilities_json, max_prompt_length, and verification_mode.
   - Implemented `adapter capability` query command.
   - Updated `adapter register` to accept and store capability metadata.
   - Added verification_mode field (preparation for future shell-free execution).
   - Updated parser with --capabilities, --max-prompt-length, --verification-mode arguments.
 - Verification executed:
-  - `.\harness\harness.ps1 --json init` applied schema version 5.
+  - `.\scripts\harness.ps1 --json init` applied schema version 5.
   - `python -m py_compile cli\harness.py` compiled successfully.
-  - `.\harness\harness.ps1 --json adapter preset all` installed with capabilities.
-  - `.\harness\harness.ps1 --json adapter capability` queried all adapters.
-  - `.\harness\harness.ps1 --json adapter capability --adapter mock-python` queried specific adapter.
-  - `.\harness\harness.ps1 check --include-active --strict-active` confirmed v0.1-v0.6 still passing.
-  - `.\harness\harness.ps1 --json adapter run --adapter mock-python --id MH-V07-001 ...` completed successfully.
+  - `.\scripts\harness.ps1 --json adapter preset all` installed with capabilities.
+  - `.\scripts\harness.ps1 --json adapter capability` queried all adapters.
+  - `.\scripts\harness.ps1 --json adapter capability --adapter mock-python` queried specific adapter.
+  - `.\scripts\harness.ps1 check --include-active --strict-active` confirmed v0.1-v0.6 still passing.
+  - `.\scripts\harness.ps1 --json adapter run --adapter mock-python --id MH-V07-001 ...` completed successfully.
 - Evidence recorded:
-  - `harness/v0.7-plan.md` defines v0.7 scope and gates.
-  - `harness/v0.7-acceptance.md` recorded v0.7 evidence and results.
+  - `docs/releases/v0.7-plan.md` defines v0.7 scope and gates.
+  - `docs/releases/v0.7-acceptance.md` recorded v0.7 evidence and results.
   - `harness/features.json` updated with MH-010 (v0.7 feature).
 - Commit: recorded in latest `origin/main` history after push.
 - Updated files or artifacts:
   - `cli/harness.py` - added capability support and query commands
-  - `state/schema/005-adapter-capabilities.sql` - new schema migration
-  - `harness/v0.7-plan.md` - v0.7 planning document
-  - `harness/v0.7-acceptance.md` - v0.7 acceptance criteria and evidence
+  - `migrations/005-adapter-capabilities.sql` - new schema migration
+  - `docs/releases/v0.7-plan.md` - v0.7 planning document
+  - `docs/releases/v0.7-acceptance.md` - v0.7 acceptance criteria and evidence
   - `harness/features.json` - added MH-010 feature
   - `harness/progress.md` - updated with session log
 - Known risks:
@@ -352,27 +352,27 @@ readiness before provider adapters.
   - `python -m py_compile cli\harness.py`
   - `python -m json.tool harness\skills.json`
   - `python -m json.tool harness\benchmarks.json`
-  - `.\harness\harness.ps1 init`
-  - `.\harness\harness.ps1 tool seed`
-  - `.\harness\harness.ps1 route --json --summary "Fix parser bug" --work-type bugfix --scope module --risk medium`
-  - `.\harness\harness.ps1 route --json --summary "Update dashboard component" --work-type feature --scope module --risk medium --tag ui`
-  - `.\harness\harness.ps1 approval request ...`
-  - `.\harness\harness.ps1 approval resolve ...`
-  - `.\harness\harness.ps1 bench run --json --fail-on-regression`
-  - `.\harness\harness.ps1 check --include-active`
+  - `.\scripts\harness.ps1 init`
+  - `.\scripts\harness.ps1 tool seed`
+  - `.\scripts\harness.ps1 route --json --summary "Fix parser bug" --work-type bugfix --scope module --risk medium`
+  - `.\scripts\harness.ps1 route --json --summary "Update dashboard component" --work-type feature --scope module --risk medium --tag ui`
+  - `.\scripts\harness.ps1 approval request ...`
+  - `.\scripts\harness.ps1 approval resolve ...`
+  - `.\scripts\harness.ps1 bench run --json --fail-on-regression`
+  - `.\scripts\harness.ps1 check --include-active`
   - `git diff --check`
 - Evidence recorded:
-  - `harness/v0.8-plan.md`
-  - `harness/v0.8-acceptance.md`
+  - `docs/releases/v0.8-plan.md`
+  - `docs/releases/v0.8-acceptance.md`
   - `harness/features.json` updated with `MH-011`
   - local runtime DB: `harness/harness.db` (ignored by git)
 - Updated files or artifacts:
   - `cli/harness.py`
-  - `state/schema/006-routing-alignment.sql`
+  - `migrations/006-routing-alignment.sql`
   - `harness/skills.json`
   - `harness/benchmarks.json`
-  - `harness/v0.8-plan.md`
-  - `harness/v0.8-acceptance.md`
+  - `docs/releases/v0.8-plan.md`
+  - `docs/releases/v0.8-acceptance.md`
   - `docs/ROUTING.md`
   - `docs/BENCHMARKS.md`
   - `harness/features.json`
@@ -401,27 +401,27 @@ readiness before provider adapters.
 - Verification executed:
   - `python -m py_compile cli\harness.py`
   - `python -m json.tool harness\skills.json`
-  - `.\harness\harness.ps1 init`
-  - `.\harness\harness.ps1 tool seed`
-  - `.\harness\harness.ps1 route --json ... bugfix`
-  - `.\harness\harness.ps1 route --json ... ui`
-  - `.\harness\harness.ps1 route --json ... approval-required`
-  - `.\harness\harness.ps1 report final --json ... --persist`
-  - `.\harness\harness.ps1 complete --json ...`
-  - `.\harness\harness.ps1 approval check --json ...`
-  - `.\harness\harness.ps1 run once --json ... --approval-id ...`
-  - `.\harness\harness.ps1 bench run --json --fail-on-regression`
+  - `.\scripts\harness.ps1 init`
+  - `.\scripts\harness.ps1 tool seed`
+  - `.\scripts\harness.ps1 route --json ... bugfix`
+  - `.\scripts\harness.ps1 route --json ... ui`
+  - `.\scripts\harness.ps1 route --json ... approval-required`
+  - `.\scripts\harness.ps1 report final --json ... --persist`
+  - `.\scripts\harness.ps1 complete --json ...`
+  - `.\scripts\harness.ps1 approval check --json ...`
+  - `.\scripts\harness.ps1 run once --json ... --approval-id ...`
+  - `.\scripts\harness.ps1 bench run --json --fail-on-regression`
 - Evidence recorded:
-  - `harness/v0.9-plan.md`
-  - `harness/v0.9-acceptance.md`
+  - `docs/releases/v0.9-plan.md`
+  - `docs/releases/v0.9-acceptance.md`
   - `harness/features.json` updated with `MH-012`
   - local runtime DB: `harness/harness.db` (ignored by git)
 - Updated files or artifacts:
   - `cli/harness.py`
-  - `state/schema/007-core-gates.sql`
+  - `migrations/007-core-gates.sql`
   - `harness/skills.json`
-  - `harness/v0.9-plan.md`
-  - `harness/v0.9-acceptance.md`
+  - `docs/releases/v0.9-plan.md`
+  - `docs/releases/v0.9-acceptance.md`
   - `docs/GATES.md`
   - `docs/CLI.md`
   - `docs/ROUTING.md`
@@ -444,7 +444,7 @@ readiness before provider adapters.
   - Expanded startup workflow with `pwd`, progress/features reads, recent git history, init, baseline verification, tool seed, routing, and one-feature focus.
   - Added explicit completion and end-of-session rules.
 - Verification executed:
-  - `.\harness\harness.ps1 check --include-active --strict-active`
+  - `.\scripts\harness.ps1 check --include-active --strict-active`
 - Evidence recorded:
   - `AGENTS.md` updated.
   - `harness/progress.md` updated.
@@ -462,17 +462,17 @@ readiness before provider adapters.
   - Covered UI proof blocking, approval scope validation, completion evidence gates, and benchmark score output.
   - Wired CLI contract tests and schema parsing into `harness check`.
   - Updated README and `harness.yaml` to reflect v0.10 hardening.
-  - Added `docs/CONTRACTS.md`, `harness/v0.10-plan.md`, and `harness/v0.10-acceptance.md`.
+  - Added `docs/CONTRACTS.md`, `docs/releases/v0.10-plan.md`, and `docs/releases/v0.10-acceptance.md`.
   - Updated `harness/features.json` with `MH-013`.
 - Verification executed:
-  - `.\harness\harness.ps1 init`
+  - `.\scripts\harness.ps1 init`
   - `python -m unittest discover -s tests -p "test_*.py"`
-  - `.\harness\harness.ps1 check --include-active --strict-active`
+  - `.\scripts\harness.ps1 check --include-active --strict-active`
 - Evidence recorded:
   - `tests/test_cli_contracts.py`
   - `schemas/*.schema.json`
   - `docs/CONTRACTS.md`
-  - `harness/v0.10-acceptance.md`
+  - `docs/releases/v0.10-acceptance.md`
   - `harness/features.json`
 - Known risks:
   - Schemas parse successfully but are not yet enforced by a full JSON Schema validator.
@@ -493,7 +493,7 @@ readiness before provider adapters.
   - Updated `harness/features.json` with `MH-014`.
 - Verification executed:
   - `python -m json.tool harness\features.json`
-  - `.\harness\harness.ps1 check --include-active --strict-active`
+  - `.\scripts\harness.ps1 check --include-active --strict-active`
   - `git diff --check`
 - Evidence recorded:
   - `ANALYSIS_CROSS_REPO_IDEAS.md`
@@ -526,7 +526,7 @@ readiness before provider adapters.
   - packaged launcher init/check against a temp workspace
   - `npm pack --dry-run`
   - `npm run check`
-  - `.\harness\harness.ps1 check --include-active --strict-active`
+  - `.\scripts\harness.ps1 check --include-active --strict-active`
   - `npx --yes github:ntu254/my-harness#v0.10.1 --package-version`
   - `npx --yes github:ntu254/my-harness#v0.10.1 install --version v0.2.0 --target <tmp>`
 - Evidence recorded:
@@ -569,13 +569,13 @@ readiness before provider adapters.
 - Verification executed:
   - `python -m unittest discover -s tests -p "test_*.py"` before changes:
     4 tests passed.
-  - `.\harness\harness.ps1 check --include-active --strict-active` before
+  - `.\scripts\harness.ps1 check --include-active --strict-active` before
     changes: passed.
   - `python -m unittest tests.test_professional_review_contracts -v`: 7 tests
     passed.
   - `python -m unittest discover -s tests -p "test_*.py"`: 11 tests passed.
   - `npm run check`: passed with 11 tests.
-  - `.\harness\harness.ps1 check --include-active --strict-active`: passed.
+  - `.\scripts\harness.ps1 check --include-active --strict-active`: passed.
   - `npm pack --dry-run`: produced a clean 79-file package for v0.10.3.
 - Evidence recorded:
   - `tests/test_professional_review_contracts.py`
@@ -606,7 +606,7 @@ readiness before provider adapters.
   - Updated `harness/features.json` with `MH-017`.
 - Verification executed:
   - `python -m json.tool harness\features.json`
-  - `.\harness\harness.ps1 check --include-active --strict-active`
+  - `.\scripts\harness.ps1 check --include-active --strict-active`
 - Known risks:
   - This is documentation-only; npm publish and adoption command remain
     deferred.
@@ -637,10 +637,10 @@ readiness before provider adapters.
   - `python -m py_compile cli\harness.py`
   - `python -m unittest discover -s tests -p "test_*.py"`
   - `npm run check`
-  - `.\harness\harness.ps1 bench run --json --fail-on-regression`
-  - `.\harness\harness.ps1 route --json ... maintenance file`
-  - `.\harness\harness.ps1 route --json ... critical external migration`
-  - `.\harness\harness.ps1 check --include-active --strict-active`
+  - `.\scripts\harness.ps1 bench run --json --fail-on-regression`
+  - `.\scripts\harness.ps1 route --json ... maintenance file`
+  - `.\scripts\harness.ps1 route --json ... critical external migration`
+  - `.\scripts\harness.ps1 check --include-active --strict-active`
 - Evidence recorded:
   - `docs/HARNESS_ENGINEERING_ADOPTION.md`
   - `harness/skills.json`

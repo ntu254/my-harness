@@ -8,7 +8,7 @@ evidence, and trace records around command execution.
 ## Command
 
 ```powershell
-.\harness\harness.ps1 run once `
+.\scripts\harness.ps1 run once `
   --id MH-006-SMOKE `
   --summary "Validate runner MVP" `
   --agent-command "python --version" `

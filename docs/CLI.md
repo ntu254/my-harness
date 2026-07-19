@@ -17,13 +17,13 @@ scores.
 Windows:
 
 ```powershell
-.\harness\harness.ps1 init
+.\scripts\harness.ps1 init
 ```
 
 macOS/Linux:
 
 ```bash
-bash harness/harness.sh init
+bash scripts/harness.sh init
 ```
 
 The default database is:
@@ -75,21 +75,21 @@ harness query reports
 Every command accepts `--json` at the top level:
 
 ```powershell
-.\harness\harness.ps1 --json query active
+.\scripts\harness.ps1 --json query active
 ```
 
 Run the standard checks:
 
 ```powershell
-.\harness\harness.ps1 check --include-active --strict-active
+.\scripts\harness.ps1 check --include-active --strict-active
 ```
 
 ## Example
 
 ```powershell
-.\harness\harness.ps1 init
+.\scripts\harness.ps1 init
 
-.\harness\harness.ps1 intake add `
+.\scripts\harness.ps1 intake add `
   --intent modify `
   --work-type feature `
   --scope module `
@@ -97,24 +97,24 @@ Run the standard checks:
   --lane normal `
   --summary "Add CLI MVP"
 
-.\harness\harness.ps1 story add `
+.\scripts\harness.ps1 story add `
   --id MH-005 `
   --title "Implement CLI SQLite MVP" `
   --lane normal `
   --status in_progress
 
-.\harness\harness.ps1 evidence add `
+.\scripts\harness.ps1 evidence add `
   --kind smoke `
   --target cli `
   --result pass `
-  --command ".\harness\harness.ps1 query active" `
+  --command ".\scripts\harness.ps1 query active" `
   --story MH-005
 ```
 
 Runner example:
 
 ```powershell
-.\harness\harness.ps1 run once `
+.\scripts\harness.ps1 run once `
   --id MH-006 `
   --summary "Implement runner MVP" `
   --agent-command "python --version" `
@@ -129,14 +129,14 @@ Runner example:
 Adapter example:
 
 ```powershell
-.\harness\harness.ps1 adapter register `
+.\scripts\harness.ps1 adapter register `
   --id mock-python `
   --provider mock `
   --command-template "python --version" `
   --availability present `
   --trust verified_local
 
-.\harness\harness.ps1 adapter run `
+.\scripts\harness.ps1 adapter run `
   --adapter mock-python `
   --id MH-007 `
   --summary "Validate adapter contract" `
@@ -147,7 +147,7 @@ Adapter example:
 Prompt template example:
 
 ```powershell
-.\harness\harness.ps1 adapter run `
+.\scripts\harness.ps1 adapter run `
   --adapter mock-python `
   --id MH-009-TEMPLATE `
   --summary "Validate prompt template rendering" `
@@ -161,16 +161,16 @@ Prompt template example:
 Preset and discovery example:
 
 ```powershell
-.\harness\harness.ps1 adapter preset all
-.\harness\harness.ps1 adapter discover --adapter mock-python
+.\scripts\harness.ps1 adapter preset all
+.\scripts\harness.ps1 adapter discover --adapter mock-python
 ```
 
 Route and capability example:
 
 ```powershell
-.\harness\harness.ps1 tool seed
+.\scripts\harness.ps1 tool seed
 
-.\harness\harness.ps1 route --json `
+.\scripts\harness.ps1 route --json `
   --summary "Fix parser bug" `
   --work-type bugfix `
   --scope module `
@@ -181,7 +181,7 @@ Route and capability example:
 Human gate example:
 
 ```powershell
-.\harness\harness.ps1 route --json `
+.\scripts\harness.ps1 route --json `
   --summary "Irreversible external migration" `
   --intent execute `
   --work-type migration `
@@ -189,7 +189,7 @@ Human gate example:
   --reversibility irreversible `
   --risk critical
 
-.\harness\harness.ps1 approval request `
+.\scripts\harness.ps1 approval request `
   --summary "Approve irreversible external migration" `
   --risk critical
 ```
@@ -197,18 +197,18 @@ Human gate example:
 Benchmark example:
 
 ```powershell
-.\harness\harness.ps1 bench run --json --fail-on-regression
+.\scripts\harness.ps1 bench run --json --fail-on-regression
 ```
 
 Completion gate example:
 
 ```powershell
-.\harness\harness.ps1 report final --json `
+.\scripts\harness.ps1 report final --json `
   --story MH-011 `
   --route-id 5 `
   --persist
 
-.\harness\harness.ps1 complete --json `
+.\scripts\harness.ps1 complete --json `
   --story MH-011 `
   --route-id 5 `
   --residual-risk "none beyond local smoke" `
@@ -220,7 +220,7 @@ Completion gate example:
 `story update` supports optimistic concurrency:
 
 ```powershell
-.\harness\harness.ps1 story update --id MH-005 --status verifying --expected-revision 1
+.\scripts\harness.ps1 story update --id MH-005 --status verifying --expected-revision 1
 ```
 
 If another process has already updated the story, the command fails instead of

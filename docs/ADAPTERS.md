@@ -10,7 +10,7 @@ verification, and handoff.
 ## Register
 
 ```powershell
-.\harness\harness.ps1 adapter register `
+.\scripts\harness.ps1 adapter register `
   --id mock-python `
   --provider mock `
   --command-template "python --version" `
@@ -40,8 +40,8 @@ using raw `{prompt}` are rejected unless `--allow-raw-prompt` is passed.
 ## Presets
 
 ```powershell
-.\harness\harness.ps1 adapter preset list
-.\harness\harness.ps1 adapter preset all
+.\scripts\harness.ps1 adapter preset list
+.\scripts\harness.ps1 adapter preset all
 ```
 
 Built-in presets:
@@ -56,7 +56,7 @@ smoke run proves the executable and command flags on the current machine.
 ## Discovery
 
 ```powershell
-.\harness\harness.ps1 adapter discover --adapter mock-python
+.\scripts\harness.ps1 adapter discover --adapter mock-python
 ```
 
 Discovery checks the adapter executable and records `availability`,
@@ -65,7 +65,7 @@ Discovery checks the adapter executable and records `availability`,
 ## Run
 
 ```powershell
-.\harness\harness.ps1 adapter run `
+.\scripts\harness.ps1 adapter run `
   --adapter mock-python `
   --id MH-007 `
   --summary "Validate adapter contract" `
@@ -81,7 +81,7 @@ Discovery checks the adapter executable and records `availability`,
 Prompt-file input:
 
 ```powershell
-.\harness\harness.ps1 adapter run `
+.\scripts\harness.ps1 adapter run `
   --adapter mock-python `
   --id MH-008-FILE `
   --summary "Validate prompt file input" `
@@ -92,7 +92,7 @@ Prompt-file input:
 Prompt-template input:
 
 ```powershell
-.\harness\harness.ps1 adapter run `
+.\scripts\harness.ps1 adapter run `
   --adapter mock-python `
   --id MH-009-TEMPLATE `
   --summary "Validate prompt template rendering" `
@@ -147,7 +147,7 @@ because executable names, auth state, and CLI flags can vary.
 Example shape:
 
 ```powershell
-.\harness\harness.ps1 adapter register `
+.\scripts\harness.ps1 adapter register `
   --id codex-local `
   --provider codex `
   --command-template "codex exec --prompt-file {prompt_file_shell}" `
